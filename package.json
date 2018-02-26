@@ -1,0 +1,26 @@
+{
+  "name": "src-token",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SwissRealCoin/src-token.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SwissRealCoin/src-token/issues"
+  },
+  "homepage": "https://github.com/SwissRealCoin/src-token#readme",
+  "dependencies": {
+    "zeppelin-solidity": "1.7.0"
+  }
+}
