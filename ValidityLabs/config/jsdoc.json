@@ -1,0 +1,16 @@
+{
+    "plugins": ["plugins/markdown"],
+    "recurseDepth": 10,
+    "source": {
+        "include": [
+            "test/contracts/ico/tokens/SrcToken.js",
+            "test/contracts/ico/tokens/SrvToken.js",
+            "test/contracts/ico/crowdsale/SrcCrowdsale.js"
+        ]
+    },
+    "opts": {
+        "encoding": "utf8",
+        "destination": "./docs/jsdoc/",
+        "recurse": true
+    }
+}

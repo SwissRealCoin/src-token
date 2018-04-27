@@ -1,0 +1,17 @@
+{
+    "tests": [
+        "test/contracts/liquidation/Liquidator.js"
+    ],
+    "networks": {
+        "rinkeby": {
+            "from":         "0x0fadbcc6baf38842493ea527759ce7ce1644d0cc",
+            "wallet":       "0xCCb50efc315614dF57f2C774391A3410B02F06EF",
+            "underwriter":  "0x7BeFB6B4eD33db5D7158988Ee69464d7aA35C0e6"
+        },
+        "mainnet": {
+            "from":         "0x9f43eec1555cf191b15f1788b0c9ff4e43b7f215",
+            "wallet":       "0xafEaEAEAFc742E884159f98aD837A60073372633",
+            "underwriter":  "0x01D0b0c6A8F9a24591C0300Eb13463bCA40b2De8"
+        }
+    }
+}
