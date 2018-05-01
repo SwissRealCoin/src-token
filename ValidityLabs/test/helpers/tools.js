@@ -35,7 +35,7 @@ export {networkConfig};
 /**
  * @const cnf Static config from JSON file
  */
-const cnf = require('../../config/contract-ico-crowdsale.json');
+const cnf = require('../../../contracts/config/contract-ico-crowdsale.json');
 export {cnf};
 
 /**
