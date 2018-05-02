@@ -48,6 +48,8 @@ contract('Liquidator', (accounts) => {
     let payoutTokenAddress;
     let payoutTokenInstance;
 
+    const startTime = 1575158400;
+
     before(async () => {
         liquidatorInstance = await Liquidator.deployed();
         liquidationVotingInstance = await LiquidationVoting.deployed();
@@ -213,7 +215,7 @@ contract('Liquidator', (accounts) => {
     });
 
     it('should fail, because we try to set start time on an inactive contract', async () => {
-        await expectThrow(liquidatorInstance.setStartTime(1548806400)); // Wednesday, January 30, 2019 12:00:00 AM
+        await expectThrow(liquidatorInstance.setStartTime(startTime)); // Wednesday, January 30, 2019 12:00:00 AM
     });
 
     it('should fail, because we try to set rate time on an inactive contract', async () => {
@@ -285,7 +287,7 @@ contract('Liquidator', (accounts) => {
     });
 
     it('should pass, because we try to set start time on an inactive contract', async () => {
-        await liquidatorInstance.setStartTime(1548806400); // Wednesday, January 30, 2019 12:00:00 AM
+        await liquidatorInstance.setStartTime(startTime); // Wednesday, January 30, 2019 12:00:00 AM
     });
 
     it('should pass, contract in active state', async () => {
@@ -296,7 +298,7 @@ contract('Liquidator', (accounts) => {
     // !!! CLAIM !!!
     it('increase time to claim funds', async () => {
         console.log('[ Claim Funds period ]'.yellow);
-        await increaseTimeTo(1548806400 + 1);
+        await increaseTimeTo(startTime + 1);
     });
 
     it('should pass, contract in CLAIM_FUNDS state', async () => {
@@ -338,7 +340,7 @@ contract('Liquidator', (accounts) => {
     // !!! UNCLAIMED !!!
     it('increase time to claim unclaim funds', async () => {
         console.log('[ Claim Unclaimed Funds period ]'.yellow);
-        await increaseTimeTo(1548806400 + 31536000 + 1);
+        await increaseTimeTo(startTime + 31536000 + 1);
     });
 
     it('should pass, contract in CLAIM_UNCLAIMEDFUNDS state', async () => {
@@ -379,7 +381,7 @@ contract('Liquidator', (accounts) => {
     // !!! REMAINDER !!!
     it('increase time to allow forwarding of  remaining funds', async () => {
         console.log('[ Transfer Remaining Funds period ]'.yellow);
-        await increaseTimeTo(1548806400 + (31536000 * 2) + 1);
+        await increaseTimeTo(startTime + (31536000 * 2) + 1);
     });
 
     it('should pass, contract in CLAIM_REMAINDER state', async () => {

@@ -79,11 +79,11 @@ contract('SrcCrowdsale', (accounts) => {
         confirmationPeriod.should.be.bignumber.equal(60 * 60 * 24 * 30);
     });
 
-    it('should setup the ICO contracts as the controller to the SRC Token', async () => {
-        await icoTokenInstance.changeController(icoCrowdsaleInstance.address, {from: owner});
-        const newOwner = await icoTokenInstance.controller();
+    it('should setup the ICO contracts as the owner to the SRC Token', async () => {
+        await icoTokenInstance.transferOwnership(icoCrowdsaleInstance.address, {from: owner});
+        const newOwner = await icoTokenInstance.owner();
 
-        assert.equal(newOwner, icoCrowdsaleInstance.address, 'Src Token controller not correct');
+        assert.equal(newOwner, icoCrowdsaleInstance.address, 'Src Token owner not correct');
     });
 
     it('should not be able to mint more tokens from owner account (previous wallet deployer)', async () => {
@@ -1754,7 +1754,7 @@ contract('SrcCrowdsale', (accounts) => {
 
         const afterEthBalance = await web3.eth.getBalance(activeInvestor2);
 
-        assert.equal(afterEthBalance.sub(beforeEthBalance).toNumber(), 1968652600000000000, 'refunded amount !=');
+        assert.equal(afterEthBalance.sub(beforeEthBalance).toNumber(), 1999686722000000000, 'refunded amount !=');
 
         const investmentAfter8   = await icoCrowdsaleInstance.investments(8);
         const investmentAfter9   = await icoCrowdsaleInstance.investments(9);

@@ -34,7 +34,7 @@ contract('LiquidationVoting', (accounts) => {
     const notary            = accounts[9];
 
     const oneDay = 86400;
-    const startTimes = [1543622400, 1575158400, 1606780800, 1638316800, 1669852800]; // 2018 - 2022
+    const startTimes = [1669852800, 1701388800, 1733011200]; // 2022 - 2024
 
     const rate = 10;
     const unclaimedRate = 5;
@@ -155,17 +155,11 @@ contract('LiquidationVoting', (accounts) => {
     it('should check start times for the LiquidationVoting correctly', async () => {
         const time0 = await liquidationVotingInstance.startTimeStamps(0);
         const time1 = await liquidationVotingInstance.startTimeStamps(1);
-        const time2 = await liquidationVotingInstance.startTimeStamps(2);
-        const time3 = await liquidationVotingInstance.startTimeStamps(3);
-        const time4 = await liquidationVotingInstance.startTimeStamps(4);
         const currentTimeStamp = await liquidationVotingInstance.currentTimeStamp();
 
         assert.equal(currentTimeStamp, 0, 'currentTimeStamp != 0');
         assert.equal(time0, startTimes[0], 'time0 !=');
         assert.equal(time1, startTimes[1], 'time1 !=');
-        assert.equal(time2, startTimes[2], 'time2 !=');
-        assert.equal(time3, startTimes[3], 'time3 !=');
-        assert.equal(time4, startTimes[4], 'time4 !=');
     });
 
     it('should fail, CalcProposalResult, as contract is not enabled', async () => {
@@ -333,7 +327,7 @@ contract('LiquidationVoting', (accounts) => {
     */
 
     it('should call calcProposalResult to get proposal outcome', async () => {
-        const tx = await liquidationVotingInstance.calcProposalResult({from: inactiveInvestor1, gas: 200000});
+        const tx = await liquidationVotingInstance.calcProposalResult({from: inactiveInvestor1, gas: 1000000});
 
         const events = getEvents(tx, 'LiquidationResult');
 
@@ -451,7 +445,7 @@ contract('LiquidationVoting', (accounts) => {
     */
 
     it('should call calcProposalResult to get proposal outcome', async () => {
-        const tx = await liquidationVotingInstance.calcProposalResult({from: inactiveInvestor3, gas: 100000});
+        const tx = await liquidationVotingInstance.calcProposalResult({from: inactiveInvestor3, gas: 1000000});
 
         const events = getEvents(tx, 'LiquidationResult');
 

@@ -5,7 +5,9 @@
         "include": [
             "test/contracts/ico/tokens/SrcToken.js",
             "test/contracts/ico/tokens/SrvToken.js",
-            "test/contracts/ico/crowdsale/SrcCrowdsale.js"
+            "test/contracts/ico/crowdsale/SrcCrowdsale.js",
+            "test/contracts/voting/LiquidationVoting.js",
+            "test/contracts/liquidation/Liquidator.js"
         ]
     },
     "opts": {

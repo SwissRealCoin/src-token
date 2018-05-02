@@ -38,13 +38,13 @@ contract('SrcToken', (accounts) => {
     it('should instantiate the ICO token correctly', async () => {
         log.info('[ Pause Period ]');
 
-        const isOwnerAccountZero    = await srcTokenInstance.controller() === owner;
+        const isOwnerAccountZero    = await srcTokenInstance.owner() === owner;
         const name                  = await srcTokenInstance.name();
         const symbol                = await srcTokenInstance.symbol();
         const decimals              = await srcTokenInstance.decimals();
         const paused                = await srcTokenInstance.transfersEnabled();
 
-        assert.isTrue(isOwnerAccountZero, 'Owner is not the first account: ' + srcTokenInstance.controller());
+        assert.isTrue(isOwnerAccountZero, 'Owner is not the first account: ' + srcTokenInstance.owner());
         assert.equal(name, 'SwissRealCoin', 'Name does not match');
         assert.equal(symbol, 'SRC', 'Symbol does not match');
         assert.equal(decimals, 18, 'Decimals does not match');

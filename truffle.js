@@ -21,7 +21,7 @@ const basePath  = process.cwd();
 
 const buildDir          = path.join(basePath, 'build');
 const buildDirContracts = path.join(basePath, 'build/contracts');
-const srcDir            = path.join(basePath, 'src/contracts');
+const srcDir            = path.join(basePath, 'contracts');
 const testDir           = path.join(basePath, 'test/contracts');
 const migrationsDir     = path.join(basePath, 'migrations/contracts');
 
