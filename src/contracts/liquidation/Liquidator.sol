@@ -128,10 +128,7 @@ contract Liquidator is Ownable, LiquidatorInterface {
     * @dev retrieve current state in integer form 0 = NOT_ACTIVE, 1= ACTIVE, 2 = CLAIM_FUNDS, 3 = CLAIM_UNCLAIMED, 4 = CLAIM_REMAINDER
     */
     function currentState() external view returns (LiquidatorStates) {
-        if (!enabled) {
-            return LiquidatorStates.NOT_ACTIVE;
-
-        } else if (enabled) {
+        if (enabled) {
             if (now >= startClaimTime && now < startClaimUnclaimedTime) {
                 return LiquidatorStates.CLAIM_FUNDS;
             } else if (now >= startClaimUnclaimedTime && now < startClaimRemainderTime) {
@@ -139,9 +136,10 @@ contract Liquidator is Ownable, LiquidatorInterface {
             } else if (now >= startClaimRemainderTime) {
                 return LiquidatorStates.CLAIM_REMAINDER;
             }
-
             return LiquidatorStates.ACTIVE;
-        }
+        } else {
+            return LiquidatorStates.NOT_ACTIVE;
+        } 
     }
 
     /**

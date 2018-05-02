@@ -11,15 +11,12 @@ contract LiquidationVoting is Ownable {
 
     /*** Constants  ***/
     uint256 public constant VOTING_PERIOD = 23 days;
-    uint256 public constant DAY_IN_SECONDS = 86400;
-    uint256 public constant YEAR_IN_SECONDS = 31536000;
-    uint256 public constant LEAP_YEAR_IN_SECONDS = 31622400;
-    uint16 public constant ORIGIN_YEAR = 1970;
 
     /*** VARIABLES ***/
     MiniMeTokenInterface public token;
     LiquidatorInterface public liquidator;
 
+    bool public didCalc;    // used to track if the calculate of the quorumrate as already been achieve for the current voting round
     bool public votingEnabled;
     address public notary;
 
@@ -37,13 +34,14 @@ contract LiquidationVoting is Ownable {
     Proposal[] public proposals;
     uint256 public votingRound;
 
-    enum Stages { LockOutPeriod, PendingNextVotingPeriod, AcceptingVotes, VotePassed }
+    // 0 = LockOutPeriod, 1 = PendingVoting, 2 = AcceptingVotes, 3 = PendingResult, 4 = VotePassed
+    enum Stages { LockOutPeriod, PendingVoting, AcceptingVotes, PendingResult, VotePassed }
     Stages public currentStage;
 
     /*** EVENTS ***/
     event ProposalVoted(address voter, uint256 votes, bool isYes);
     event ProposalCreated(uint256 quorumRate, uint256 blocktime);
-    event LiquidationResult(bool result);
+    event LiquidationResult(bool didPass, uint256 qResult);
     event LiqudationTriggered();
 
     /*** MODIFIERS ***/
@@ -52,28 +50,46 @@ contract LiquidationVoting is Ownable {
         _;
     }
 
+    // This modifier progresses to the proper stage that's time dependant
+    modifier timedTransition()
+    {   
+        require(currentStage != Stages.VotePassed);
+
+        uint256 _blocktime = currentProposal().blocktime;
+
+        if (now >= _blocktime && now < _blocktime.add(VOTING_PERIOD)) {
+            currentStage = Stages.AcceptingVotes;
+            didCalc = false;
+        } else if (now >= _blocktime.add(VOTING_PERIOD)) {
+            currentStage = Stages.PendingResult;
+        }
+        _;
+    }
+
     modifier atStage(Stages _stage) {
         require(currentStage == _stage);
         _;
     }
 
+    // This modifier goes to the next stage after the function has completed successfully.
+    modifier transitionNext()
+    {
+        _;
+        nextStage();
+    }
+
     modifier onlyEnabled() {
-        require(votingEnabled == true);
+        require(votingEnabled);
+        _;
+    }
+
+    modifier onlyDisabled() {
+        require(!votingEnabled);
         _;
     }
 
     modifier onlyBeforeVotingPeriod(uint256 _blocktime) {
         require(now >=  _blocktime.sub(90 days) && now < _blocktime.sub(1 days));
-        _;
-    }
-
-    modifier onlyVotingPeriod(uint256 _blocktime) {
-        require(now >= _blocktime && now < _blocktime.add(VOTING_PERIOD));
-        _;
-    }
-
-    modifier onlyAfterVotingPeriod(uint256 _blocktime) {
-        require(now >= _blocktime.add(VOTING_PERIOD));
         _;
     }
 
@@ -98,21 +114,25 @@ contract LiquidationVoting is Ownable {
         startTimeStamps[4] = 1669852800;
     }
 
+    /**
+    * @dev ping an update on the contract
+     */
+    function ping() external timedTransition {}
+
     /** 
     * @dev sets the address of the liquidator contract to be later triggered if a success quorum is reached
     * @param _liquidator LiquidatorInterface
     */
-    function setLiquidator(LiquidatorInterface _liquidator) external onlyOwner {
+    function setLiquidator(LiquidatorInterface _liquidator) external onlyOwner onlyDisabled {
         liquidator = _liquidator;
     }
 
     /** 
-    * @dev allows the notary to enable this contract to open up the voting process once 95% of the funds are invested 
+    * @dev allows the notary to enable this contract to open up the proposal/voting process once 95% of the funds are invested 
     */
-    function enableVoting() public onlyNotary {
-        require(!votingEnabled);
+    function enableVoting() public onlyNotary transitionNext onlyDisabled {
         votingEnabled = true;
-        currentStage = Stages.PendingNextVotingPeriod;
+        createProposal();
     }
 
     /** 
@@ -122,25 +142,14 @@ contract LiquidationVoting is Ownable {
     function changeQuorumRate(uint256 _quorumRate) public onlyNotary onlyBeforeVotingPeriod(currentProposal().blocktime) {
         require(_quorumRate > 0 && _quorumRate <= 1000);
 
-        // triggers proposal creation
-        if (checkProposal()) {
-            createProposal();
-        }
-
-        currentProposal().quorumRate = _quorumRate;
+        proposals[proposals.length - 1].quorumRate = _quorumRate;
     }
 
     /** 
     * @dev vote 
     * @param _isYes bool
     */
-    function vote(bool _isYes) public atStage(Stages.AcceptingVotes) onlyVotingPeriod(currentProposal().blocktime) {
-        
-        // first voter triggers proposal creation
-        if (checkProposal()) {
-            createProposal();
-        }
-
+    function vote(bool _isYes) public timedTransition atStage(Stages.AcceptingVotes) {
         uint256 votes = token.balanceOfAt(msg.sender, currentProposal().blocktime);
         require(votes > 0);
         Proposal storage proposal = proposals[proposals.length - 1];
@@ -155,10 +164,13 @@ contract LiquidationVoting is Ownable {
         ProposalVoted(msg.sender, votes, _isYes);
     }
 
-    /** TODO: look over guard stage - solidity documentation 
+    /**
     * @dev calcProposalResult - allows anyone to call it to calculate the last proposal's results 
     */
-    function calcProposalResult() public atStage(Stages.AcceptingVotes) onlyAfterVotingPeriod(currentProposal().blocktime) returns (bool result) {
+    function calcProposalResult() public timedTransition atStage(Stages.PendingResult) returns (bool didPass) {
+        require(!didCalc);
+        
+        didCalc = true;
         Proposal memory proposal = currentProposal();
 
         uint256 numerator = proposal.countYesVotes.mul(1000);        // x 1000 to move the decimal point over
@@ -166,18 +178,35 @@ contract LiquidationVoting is Ownable {
         uint256 qResult = numerator.div(denominator);
 
         if (qResult >= proposal.quorumRate && isYes(proposal.countYesVotes, proposal.countNoVotes)) {
+            didPass = true;
+            votingRound++;
             currentStage = Stages.VotePassed;
             quorumPasses();
-            result = true;
         } else {
-            currentStage = Stages.PendingNextVotingPeriod;
-            result = false;
+            didPass = false;
+            createProposal();   // create proposal for next year
+            currentStage = Stages.PendingVoting;
         }
 
-        LiquidationResult(result);
+        LiquidationResult(didPass, qResult);
+    }
+
+    /** 
+    * @dev return the current proposal's quorum rate
+    */
+    function currentRate() external view returns (uint256) {
+        Proposal memory proposal = currentProposal();
+        return proposal.quorumRate;
     }
 
     /*** INTERNAL/PRIVATE ***/
+    /** 
+    * @dev progresses to the next stage
+    */
+    function nextStage() internal {
+        currentStage = Stages(uint256(currentStage) + 1);
+    }
+
     /** 
     * @dev isYes
     * @param countYes uint256
@@ -197,28 +226,11 @@ contract LiquidationVoting is Ownable {
      /** 
     * @dev createProposal
     */
-    function createProposal() internal atStage(Stages.PendingNextVotingPeriod) {
-        //TODO: require(crowdsale.finalized); //Checklist: this makes sure new tokens cannot be generated during the voting period
-
-        proposals.push(Proposal(600, block.timestamp.sub(1 days), 0, 0));
-        currentStage = Stages.AcceptingVotes;
-        ProposalCreated(600, block.timestamp);
-    }
-
-    /** 
-    * @dev checks to see if the latest proposal is from the current year
-    */
-    function checkProposal() internal view returns (bool) {
-        Proposal memory proposal = currentProposal();
-
-        uint256 proposalYear = getYear(proposal.blocktime);
-        uint256 currentYear = getYear(now);
-
-        if (proposalYear == currentYear) {
-            return true;
-        } else {
-            return false;
-        }
+    function createProposal() internal {
+        uint256 time = startTimeStamps[currentTimeStamp];
+        currentTimeStamp++;
+        proposals.push(Proposal(600, time, 0, 0));  // default is 600 or 60.0%
+        ProposalCreated(600, time);
     }
 
     /** 
@@ -227,50 +239,5 @@ contract LiquidationVoting is Ownable {
     function quorumPasses() internal atStage(Stages.VotePassed) {
         liquidator.triggerLiquidation();
         LiqudationTriggered();
-    }
-
-    /**
-    * @dev credit to: Piper Merriam Git: https://github.com/pipermerriam/ethereum-datetime/
-    * @param timestamp uint timestamp to derive the year from
-    */
-    function getYear(uint256 timestamp) internal pure returns (uint16) {
-        uint256 secondsAccountedFor = 0;
-        uint16 year;
-        uint256 numLeapYears;
-
-        // Year
-        year = uint16(ORIGIN_YEAR + timestamp / YEAR_IN_SECONDS);
-        numLeapYears = leapYearsBefore(year) - leapYearsBefore(ORIGIN_YEAR);
-
-        secondsAccountedFor += LEAP_YEAR_IN_SECONDS * numLeapYears;
-        secondsAccountedFor += YEAR_IN_SECONDS * (year - ORIGIN_YEAR - numLeapYears);
-
-        while (secondsAccountedFor > timestamp) {
-            if (isLeapYear(uint16(year - 1))) {
-                secondsAccountedFor -= LEAP_YEAR_IN_SECONDS;
-            } else {
-                secondsAccountedFor -= YEAR_IN_SECONDS;
-            }
-            year -= 1;
-        }
-        return year;
-    }
-
-    function isLeapYear(uint16 year) internal pure returns (bool) {
-        if (year % 4 != 0) {
-            return false;
-        }
-        if (year % 100 != 0) {
-            return true;
-        }
-        if (year % 400 != 0) {
-            return false;
-        }
-        return true;
-    }
-
-    function leapYearsBefore(uint256 year) internal pure returns (uint256) {
-        year -= 1;
-        return year / 4 - year / 100 + year / 400;
     }
 }
