@@ -1,26 +1,78 @@
 {
-  "name": "src-token",
+  "name": "token-voting-system",
   "version": "1.0.0",
-  "description": "",
-  "main": "truffle-config.js",
-  "directories": {
-    "test": "test"
+  "description": "Vote on Proposals with Tokens",
+  "author": "Roland Kofler <roland.kofler@validitylabs.org>",
+  "homepage": "https://github.com/validitylabs/token-voting-system",
+  "main": "./dist/app.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "^8.0.x"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "yarn dev",
+    "dev": "truffle develop",
+    "compile": "cross-env NODE_ENV=develop cross-env TASK=compile node ./tools/server/index",
+    "migrate": "yarn deploy-dev",
+    "deploy-dev": "cross-env NODE_ENV=develop cross-env TASK=migrate node ./tools/server/index",
+    "deploy-rinkeby": "cross-env NODE_ENV=rinkeby cross-env TASK=deploy node ./tools/server/index",
+    "deploy-rinkeby:infura": "cross-env NETWORK=rinkebyInfura truffle migrate --reset --compile-all --network rinkebyInfura",
+    "deploy-mainnet": "cross-env NODE_ENV=mainnet cross-env TASK=deploy node ./tools/server/index",
+    "bundle": "cross-env TASK=bundle node ./tools/server/index",
+    "test": "cross-env NODE_ENV=develop cross-env TASK=test node ./tools/server/index",
+    "coverage": "cross-env NODE_ENV=develop cross-env TASK=coverage node ./tools/server/index",
+    "geth-rinkeby": "geth --syncmode \"fast\" --rinkeby --rpc",
+    "geth-mainnet": "geth --syncmode \"fast\" --rpc",
+    "console": "truffle console --network develop",
+    "testrpc": "cross-env NODE_ENV=develop cross-env TASK=testrpc node ./tools/server/index",
+    "debug": "truffle debug --network develop",
+    "jsdoc": "jsdoc -c config/jsdoc.json",
+    "clean": "shx rm -fr db dist build bin coverage*",
+    "reset": "yarn run clean && shx rm -fr node_modules",
+    "upgrade": "yarn run reset; yarn upgrade",
+    "postinstall": "node ./tools/hashChecker.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/SwissRealCoin/src-token.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/SwissRealCoin/src-token/issues"
-  },
-  "homepage": "https://github.com/SwissRealCoin/src-token#readme",
   "dependencies": {
-    "zeppelin-solidity": "1.7.0"
+    "moment": "^2.22.0",
+    "truffle-contract": "^3.0.5",
+    "web3": "^1.0.0-beta.34",
+    "winston": "^2.4.2",
+    "zeppelin-solidity": "^1.8.0"
+  },
+  "devDependencies": {
+    "@validitylabs/js-utils": "^0.0.1",
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^8.2.1",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-register": "^6.26.0",
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^2.0.2",
+    "colors": "^1.1.2",
+    "cross-env": "^5.1.3",
+    "eslint": "^4.12.1",
+    "eslint-config-xo": "^0.19.0",
+    "eslint-plugin-babel": "^4.1.2",
+    "eth-gas-reporter": "^0.1.2",
+    "ethereumjs-abi": "^0.6.5",
+    "ganache-core": "^2.1.0",
+    "jsdoc": "^3.5.5",
+    "keythereum": "^1.0.3",
+    "prompt": "^1.0.0",
+    "shelljs": "^0.7.8",
+    "shx": "^0.2.2",
+    "solc": "0.4.19",
+    "solcpiler": "^0.0.17",
+    "solidity-coverage": "git://github.com/validitylabs/solidity-coverage.git",
+    "superagent": "^3.8.2",
+    "tree-kill": "^1.2.0",
+    "truffle": "^4.1.6",
+    "truffle-hdwallet-provider": "^0.0.3"
+  },
+  "optionalDevDependencies": {
+    "fsevents": "*",
+    "windows-build-tools": "*"
   }
 }
