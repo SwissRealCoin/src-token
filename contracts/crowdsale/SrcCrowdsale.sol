@@ -31,9 +31,6 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
 
     uint256 public investmentIdLastAttemptedToSettle;
 
-    /*** Tracking Crowdsale Stage ***/
-    bool public isCrowdsaleOver;
-
     // tempFix
     uint256 public lastWeiInvestorAmount;
 
@@ -68,17 +65,12 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     }
 
     modifier onlyCrowdsalePhase() {
-        require(now >= openingTime && now < closingTime && !isCrowdsaleOver);
+        require(now >= openingTime && now < closingTime && !isFinalized);
         _;
     }
 
     modifier onlyUnderCap(uint256 _amount) {
         require(tokensToMint.add(_amount) <= cap);
-        _;
-    }
-
-    modifier onlyCrowdSaleOver() {
-        require(now > closingTime || capReached() || isCrowdsaleOver);
         _;
     }
 
@@ -150,13 +142,8 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
         // throw event
         emit TokenPurchase(msg.sender, _beneficiary, weiAmount, tokens);
 
-        // probably don't need...
-        // _updatePurchasingState(_beneficiary, weiAmount);
-
         // forward wei to refund vault
         _forwardFunds();
-        // probably don't need...
-        // _postValidatePurchase(_beneficiary, weiAmount);
     }
 
     /**
@@ -177,7 +164,6 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
         closingTime = _start.add(_duration);
         rate = (_rateChfPerEth.mul(1e2)).div(CHF_CENT_PER_TOKEN);
         cap = cap.add(_deltaTokenCap);
-        isCrowdsaleOver = false;
         isFinalized = false;
         confirmationPeriodOver = false;
         vault.openVault();
@@ -208,7 +194,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     * @param _beneficiary address
     * @param _tokenAmount uint256
     */
-    function mintPresaleTokens(address _beneficiary, uint256 _tokenAmount) public 
+    function mintPresaleTokens(address _beneficiary, uint256 _tokenAmount) public
         onlyOwner 
         onlyPresalePhase 
         onlyNoneZero(_beneficiary, _tokenAmount) 
@@ -224,7 +210,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     * @param _beneficiaries address[]
     * @param _amounts uint256[]
     */
-    function batchMintTokenPresale(address[] _beneficiaries, uint256[] _amounts) external onlyOwner onlyPresalePhase {
+    function batchMintTokenPresale(address[] _beneficiaries, uint256[] _amounts) external {
         require(_beneficiaries.length == _amounts.length);
 
         for (uint256 i; i < _beneficiaries.length; i = i.add(1)) {

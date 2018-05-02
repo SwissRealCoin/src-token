@@ -12,7 +12,7 @@
     "comment cap":                  "150,000,000 SRC Tokens",
     "cap":                          150000000000000000000000000,
     "tests": [
-        "test/contracts/crowdsale/SrcCrowdsale.js"
+        "test/contracts/1_crowdsale/SrcCrowdsale.js"
     ],
     "networks": {
         "rinkeby": {

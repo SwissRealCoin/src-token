@@ -1,6 +1,6 @@
 {
     "tests": [
-        "test/contracts/liquidation/Liquidator.js"
+        "test/contracts/3_liquidation/Liquidator.js"
     ],
     "networks": {
         "rinkeby": {
