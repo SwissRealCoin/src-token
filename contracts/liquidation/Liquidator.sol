@@ -62,11 +62,6 @@ contract Liquidator is Ownable, LiquidatorInterface {
         _;
     }
 
-    modifier onlyVoting() {
-        require(msg.sender == swissVotingContract);
-        _;
-    }
-
     modifier onlyVotingOrManager() {
         require(isManager[msg.sender] || msg.sender == swissVotingContract);
         _;
@@ -74,11 +69,6 @@ contract Liquidator is Ownable, LiquidatorInterface {
 
     modifier onlyValidAddress(address _address) {
         require(_address != address(0));
-        _;
-    }
-
-    modifier onlyNotActive() {
-        require(startClaimTime == 0 || now < startClaimTime);
         _;
     }
 

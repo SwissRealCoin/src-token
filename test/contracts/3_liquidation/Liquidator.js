@@ -65,6 +65,15 @@ contract('Liquidator', (accounts) => {
         payoutTokenInstance = await WETHToken.at(payoutTokenAddress);
     });
 
+    // test deployment
+    it('should fail when deploying with 0s in the params', async () => {
+        console.log('[ Liquidator Deployment Test ]'.yellow);
+
+        await expectThrow(Liquidator.new(0x0, liquidationVotingInstance.address, payoutTokenAddress));
+        await expectThrow(Liquidator.new(icoTokenAddress, 0x0, payoutTokenAddress));
+        await expectThrow(Liquidator.new(icoTokenAddress, liquidationVotingInstance.address, 0x0));
+    });
+
     /**
      * [ Pre Liquidation event ]
      */
@@ -258,7 +267,11 @@ contract('Liquidator', (accounts) => {
         await expectThrow(liquidatorInstance.triggerLiquidation());
     });
 
-    it('should pass, because we try to set rate time on an active contract', async () => {
+    it('should fail, because we try to set a 0 rate on an active contract', async () => {
+        await expectThrow(liquidatorInstance.setRate(0));
+    });
+
+    it('should pass, because we try to set rate on an active contract', async () => {
         await liquidatorInstance.setRate(rate);
         const checkRate = await liquidatorInstance.rate();
         assert.equal(checkRate.toNumber(), rate, 'rate !=');
@@ -266,6 +279,10 @@ contract('Liquidator', (accounts) => {
 
     it('should pass, because we try to set a ERC20 token on an active contract', async () => {
         await liquidatorInstance.setNewErc20Token(payoutTokenAddress);
+    });
+
+    it('should fail, because we try to set a 0 setUnclaimedRate on an active contract', async () => {
+        await expectThrow(liquidatorInstance.setUnclaimedRate(0));
     });
 
     it('should pass, because we try to set unClaimedRate time on an active contract', async () => {
@@ -324,6 +341,10 @@ contract('Liquidator', (accounts) => {
         assert.equal(WethBalance.toNumber(), 10000 * rate, 'WETH balance !=');
     });
 
+    it('should fail, we already claimed funds or have 0 token allowance', async () => {
+        await expectThrow(liquidatorInstance.claimFunds({from: activeInvestor1, gas: 1000000}));
+    });
+
     it('should fail, because we try to claim unclaimed funds on an active contract in the wrong state', async () => {
         await voucherTokenInstance.approve(liquidatorInstance.address, 20000, {from: inactiveInvestor2, gas: 1000000});
         const allowance = await voucherTokenInstance.allowance(inactiveInvestor2, liquidatorInstance.address);
@@ -364,6 +385,10 @@ contract('Liquidator', (accounts) => {
 
         assert.equal(VoucherBalance.toNumber(), 0, 'Voucher Balance !=');
         assert.equal(WethBalance.toNumber(), 100000 + pendingBalance.toNumber(), 'WETH balance !=');
+    });
+
+    it('should fail, we already claimed funds or have 0 token allowance', async () => {
+        await expectThrow(liquidatorInstance.claimUnclaimFunds({from: activeInvestor1, gas: 1000000}));
     });
 
     it('should fail, because we try to claim funds on an active contract in the wrong state', async () => {
