@@ -250,7 +250,7 @@ contract('LiquidationVoting', (accounts) => {
         await increaseTimeTo(startTimes[0] - (oneDay * 90) + 1);
     });
 
-    it('notary should be able to change qurorum rate to 55%', async () => {
+    it('notary should be able to change quorum rate to 55%', async () => {
         await liquidationVotingInstance.changeQuorumRate(550, {from: notary, gas: 100000});
         const currentRate = await liquidationVotingInstance.currentRate();
 
