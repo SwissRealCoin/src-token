@@ -266,7 +266,7 @@ contract('LiquidationVoting', (accounts) => {
         await increaseTimeTo(startTimes[0]);
     });
 
-    it('should fail, notary should not be able to change qurorum rate to 55%', async () => {
+    it('should fail, notary should not be able to change quorum rate to 55%', async () => {
         await expectThrow(liquidationVotingInstance.changeQuorumRate(550, {from: notary, gas: 100000}));
     });
 
@@ -384,7 +384,7 @@ contract('LiquidationVoting', (accounts) => {
         await increaseTimeTo(startTimes[1] + 1);
     });
 
-    it('should fail, notary should be able to change qurorum rate to 55%', async () => {
+    it('should fail, notary should be able to change quorum rate to 55%', async () => {
         await expectThrow(liquidationVotingInstance.changeQuorumRate(550, {from: notary, gas: 100000}));
     });
 

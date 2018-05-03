@@ -133,7 +133,7 @@ contract Liquidator is Ownable, LiquidatorInterface {
     }
 
     /**
-    * @dev start the Liquidation process - called by the notary or from the sucessful passing quroum vote smart contract
+    * @dev start the Liquidation process - called by the notary or from the sucessful passing quorum vote smart contract
     */
     function triggerLiquidation() external onlyVotingOrManager {
         require(!enabled);

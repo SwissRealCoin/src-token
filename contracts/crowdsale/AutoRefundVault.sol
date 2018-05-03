@@ -23,7 +23,7 @@ contract AutoRefundVault is Ownable {
     State public state;
 
     /*** EVENTS ***/
-    event Closed();
+    event Closed(uint256 vaultBalance);
     event Opened();
     event Refunded(address indexed beneficiary, uint256 weiAmount);
 
@@ -48,8 +48,9 @@ contract AutoRefundVault is Ownable {
     function close() onlyOwner public {
         require(state == State.Active);
         state = State.Closed;
-        emit Closed();
-        wallet.transfer(address(this).balance);
+        uint256 vaultBalance = address(this).balance;
+        emit Closed(vaultBalance);
+        wallet.transfer(vaultBalance);
     }
 
     /*** Custom functions added below ***/

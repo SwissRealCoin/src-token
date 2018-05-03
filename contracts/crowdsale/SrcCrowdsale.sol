@@ -25,6 +25,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
 
     uint256 public tokensToMint;    // total token supply that has yet to be generated
     uint256 public tokensMinted;    // total token supply that has been generated
+    uint256 public crowdsaleRound;
 
     uint256 public confirmationPeriod = 30 days; // TODO: find out confirmation period requirements
     bool public confirmationPeriodOver; // allows owner/manager to manually end confirmation period
@@ -49,6 +50,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     /*** EVENTS  ***/
     event ChangedManager(address manager, bool active);
     event PresalePurchase(address indexed beneficiary, uint256 tokenAmount);
+    event NonEthTokenPurchase(uint256 investmentType, address indexed beneficiary, uint256 tokenAmount);
     event NewCrowdsaleRound(uint256 start, uint256 duration, uint256 rate, uint256 detaTokenCap);
     event ChangedInvestmentConfirmation(uint256 investmentId, address investor, bool confirmed);
 
@@ -58,9 +60,8 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
         _;
     }
 
-    // trying to accompish using already existing variables to determine stage - prevents manual updating of the enum stage states
     modifier onlyPresalePhase() {
-        require(now < openingTime);
+        require(now < openingTime && crowdsaleRound == 0);
         _;
     }
 
@@ -166,6 +167,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
         cap = cap.add(_deltaTokenCap);
         isFinalized = false;
         confirmationPeriodOver = false;
+        crowdsaleRound++;
         vault.openVault();
 
         emit NewCrowdsaleRound(_start, _duration, _rateChfPerEth, _deltaTokenCap);
@@ -200,12 +202,11 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
         onlyNoneZero(_beneficiary, _tokenAmount) 
         onlyUnderCap(_tokenAmount) 
     {
-        lastWeiInvestorAmount = 0;
-        _processPurchase(_beneficiary, _tokenAmount);
+        _deliverTokens(_beneficiary, _tokenAmount);
         emit PresalePurchase(_beneficiary, _tokenAmount);
     }
 
-   /**
+    /**
     * @dev onlyOwner allowed to handle batch presale minting
     * @param _beneficiaries address[]
     * @param _amounts uint256[]
@@ -215,6 +216,37 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
 
         for (uint256 i; i < _beneficiaries.length; i = i.add(1)) {
             mintPresaleTokens(_beneficiaries[i], _amounts[i]);
+        }
+    }
+
+    /**
+    * @dev onlyOwner allowed to allocate non-ETH investments during the crowdsale
+    * @param _investmentType uint256
+    * @param _beneficiary address
+    * @param _tokenAmount uint256
+    */
+    function nonEthPurchase(uint256 _investmentType, address _beneficiary, uint256 _tokenAmount) public
+        onlyOwner 
+        onlyCrowdsalePhase
+        onlyNoneZero(_beneficiary, _tokenAmount) 
+        onlyUnderCap(_tokenAmount) 
+    {
+        lastWeiInvestorAmount = 0;
+        _processPurchase(_beneficiary, _tokenAmount);
+        emit NonEthTokenPurchase(_investmentType, _beneficiary, _tokenAmount);
+    }
+
+   /**
+    * @dev onlyOwner allowed to handle batches of non-ETH investments
+    * @param _investmentTypes uint256[] array of ids to identify investment types IE: BTC, CHF, EUR, etc...
+    * @param _beneficiaries address[]
+    * @param _amounts uint256[]
+    */
+    function batchNonEthPurchase(uint256[] _investmentTypes, address[] _beneficiaries, uint256[] _amounts) external {
+        require(_beneficiaries.length == _amounts.length && _investmentTypes.length == _amounts.length);
+
+        for (uint256 i; i < _beneficiaries.length; i = i.add(1)) {
+            nonEthPurchase(_investmentTypes[i], _beneficiaries[i], _amounts[i]);
         }
     }
 

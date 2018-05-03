@@ -45,6 +45,7 @@ contract('SrcCrowdsale', (accounts) => {
     let vaultWallet;
 
     let initialWalletBalance;
+    let vaultBalancePreFinalize;
 
     const ICO_TOKEN_CAP = 150e6;
 
@@ -201,6 +202,10 @@ contract('SrcCrowdsale', (accounts) => {
         await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, web3.toWei(ICO_TOKEN_CAP + 1, 'ether'), {from: owner, gas: 1000000}));
     });
 
+    it('should fail, because we try to do a non-ETH investment before crowdsale starts', async () => {
+        await expectThrow(icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, 100000, {from: owner, gas: 1000000}));
+    });
+
     it('should fail, because we try to trigger buyTokens in before contribution time is started', async () => {
         await expectThrow(icoCrowdsaleInstance.buyTokens(activeInvestor1, {from: activeInvestor2, gas: 1000000}));
     });
@@ -237,8 +242,8 @@ contract('SrcCrowdsale', (accounts) => {
         const activeInvestor1Balance2 = await icoTokenInstance.balanceOf(activeInvestor1);
         const activeInvestor2Balance2 = await icoTokenInstance.balanceOf(activeInvestor2);
 
-        activeInvestor1Balance2.should.be.bignumber.equal(new BigNumber(0));
-        activeInvestor2Balance2.should.be.bignumber.equal(new BigNumber(0));
+        activeInvestor1Balance2.should.be.bignumber.equal(three);
+        activeInvestor2Balance2.should.be.bignumber.equal(five);
 
         // Testing events
         const events1 = getEvents(tx1, 'PresalePurchase');
@@ -265,6 +270,38 @@ contract('SrcCrowdsale', (accounts) => {
             '0x0',
             {from: activeInvestor1, gas: 1000000, value: web3.toWei(1, 'ether')}
         ));
+    });
+
+    it('should call single non-ETH investment function during crowdsale', async () => {
+        const activeInvestor1Balance1   = await icoTokenInstance.balanceOf(activeInvestor1);
+        const activeInvestor2Balance1   = await icoTokenInstance.balanceOf(activeInvestor2);
+        const three                     = web3.toWei(3, 'ether');
+        const five                      = web3.toWei(5, 'ether');
+
+        activeInvestor1Balance1.should.be.bignumber.equal(three);
+        activeInvestor2Balance1.should.be.bignumber.equal(five);
+
+        const tx1 = await icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, three);   // investments(0)
+        const tx2 = await icoCrowdsaleInstance.nonEthPurchase(1, activeInvestor2, five);    // investments(1)
+
+        const activeInvestor1Balance2 = await icoTokenInstance.balanceOf(activeInvestor1);
+        const activeInvestor2Balance2 = await icoTokenInstance.balanceOf(activeInvestor2);
+
+        activeInvestor1Balance2.should.be.bignumber.equal(three);
+        activeInvestor2Balance2.should.be.bignumber.equal(five);
+
+        // Testing events
+        const events1 = getEvents(tx1, 'NonEthTokenPurchase');
+        const events2 = getEvents(tx2, 'NonEthTokenPurchase');
+
+        assert.equal(events1[0].investmentType.toNumber(), 0, 'activeInvestor1 investmentType !=');
+        assert.equal(events2[0].investmentType.toNumber(), 1, 'activeInvestor2 investmentType !=');
+
+        assert.equal(events1[0].beneficiary, activeInvestor1, '');
+        assert.equal(events2[0].beneficiary, activeInvestor2, '');
+
+        events1[0].tokenAmount.should.be.bignumber.equal(three);
+        events2[0].tokenAmount.should.be.bignumber.equal(five);
     });
 
     it('should buyTokens properly', async () => {
@@ -422,10 +459,6 @@ contract('SrcCrowdsale', (accounts) => {
         assert.equal(vaultBalance.toNumber(), web3.toWei(27, 'ether'), 'vault balance not equal');
     });
 
-    it('should fail, because we try to trigger mintPresaleTokens in contribution period', async () => {
-        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 3));
-    });
-
     it('should fail, because we try to trigger confirmPayment with non manager account', async () => {
         await expectThrow(icoCrowdsaleInstance.confirmPayment(0, {from: inactiveManager, gas: 1000000}));
     });
@@ -467,10 +500,10 @@ contract('SrcCrowdsale', (accounts) => {
      * [ Confirmation period ]
      */
 
-    it('should fail, because we try to trigger mintPresaleTokens in Confirmation period', async () => {
+    it('should fail, because we try to trigger nonEthPurchase in Confirmation period', async () => {
         console.log('[ Confirmation period ]'.yellow);
         await increaseTimeTo(cnf.endTimeTesting + 1);
-        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 3));
+        await expectThrow(icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, 3));
     });
 
     it('should trigger confirmPayment successfully', async () => {
@@ -732,6 +765,10 @@ contract('SrcCrowdsale', (accounts) => {
         await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 1));
     });
 
+    it('should fail, because we try to do a non-ETH investment after Confirmation period is over', async () => {
+        await expectThrow(icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, 1));
+    });
+
     it('should fail, because we try to trigger confirmPayment after Confirmation period is over', async () => {
         await expectThrow(icoCrowdsaleInstance.confirmPayment(0, {from: activeManager, gas: 1000000}));
     });
@@ -929,9 +966,6 @@ contract('SrcCrowdsale', (accounts) => {
         assert.isFalse(investment6[5]);                                     // AttemptedSettlement
         assert.isFalse(investment6[6]);                                     // CompletedSettlement
 
-        // let tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // let tokensToMint = await icoCrowdsaleInstance.tokensToMint();
-
         await icoCrowdsaleInstance.batchSettleInvestments([1, 2, 3], {from: activeInvestor2, gas: 1000000});
 
         const investmentAfter0   = await icoCrowdsaleInstance.investments(0);
@@ -1009,13 +1043,7 @@ contract('SrcCrowdsale', (accounts) => {
         const etherInvestorBefore     = await web3.eth.getBalance(activeInvestor4);
         const tokenInvestor3Before    = await icoTokenInstance.balanceOf(activeInvestor4);
 
-        // let tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // let tokensToMint = await icoCrowdsaleInstance.tokensToMint();
-
         await icoCrowdsaleInstance.settleInvestment(5, {from: inactiveInvestor1, gas: 1000000});
-
-        // tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // tokensToMint = await icoCrowdsaleInstance.tokensToMint();
 
         const etherVaultAfter         = await web3.eth.getBalance(vault);
         const etherInvestorAfter      = await web3.eth.getBalance(activeInvestor4);
@@ -1040,18 +1068,15 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     it('check balance of wallet (account[6] vs vault balance, pre-finalize)', async () => {
-        const vaultBalance = await web3.eth.getBalance(vault);
+        vaultBalancePreFinalize = await web3.eth.getBalance(vault);
         const walletBalance =  await web3.eth.getBalance(wallet);
 
-        assert.equal(vaultBalance.toNumber(), web3.toWei(9, 'ether'), 'wrong vault balance');
+        assert.equal(vaultBalancePreFinalize.toNumber(), web3.toWei(9, 'ether'), 'wrong vault balance');
         assert.equal(walletBalance.toNumber() - initialWalletBalance.toNumber(), 0, 'wrong wallet balance');
     });
 
     it('should call finalize successfully', async () => {
         console.log('[ Finalize Crowdsale ]'.yellow);
-
-        // const tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // const tokensToMint = await icoCrowdsaleInstance.tokensToMint();
 
         const ownerBalance = await icoTokenInstance.balanceOf(owner);
         const activeManagerBalance = await icoTokenInstance.balanceOf(activeManager);
@@ -1073,7 +1098,10 @@ contract('SrcCrowdsale', (accounts) => {
         let transfersEnabled = await icoTokenInstance.transfersEnabled();
         assert.isFalse(transfersEnabled);
 
-        await icoCrowdsaleInstance.finalize({from: owner, gas: 1000000});
+        const tx = await icoCrowdsaleInstance.finalize({from: owner, gas: 1000000});
+        // log.info(JSON.stringify(tx));
+        // const events = getEvents(tx, 'Closed');
+        // vaultBalanceEvent = events[0].vaultBalance.toNumber();
 
         transfersEnabled = await icoTokenInstance.transfersEnabled();
         assert.isTrue(transfersEnabled);
@@ -1084,7 +1112,7 @@ contract('SrcCrowdsale', (accounts) => {
         const walletBalance =  await web3.eth.getBalance(wallet);
 
         assert.equal(vaultBalance.toNumber(), 0, 'wrong vault balance');
-        assert.equal(walletBalance.toNumber() - initialWalletBalance.toNumber(), 8999999999957795000, 'wrong wallet balance');
+        assert.isAbove(walletBalance.toNumber(), initialWalletBalance.toNumber(), 'wrong wallet balance');
     });
 
     it('check to make sure crowdsale is closed and finalized', async () => {
@@ -1098,7 +1126,7 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     it('2nd should fail, because we try to mint tokens for presale with a non active crowdsale', async () => {
-        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 1, {from: owner, gas: 1000000}));
+        await expectThrow(icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, 1, {from: owner, gas: 1000000}));
     });
 
     it('2nd should fail, because we try to trigger buyTokens in before contribution time is started', async () => {
@@ -1211,14 +1239,36 @@ contract('SrcCrowdsale', (accounts) => {
         assert.isTrue(transfersEnabled);
     });
 
-    it('2nd should batch mint tokens for presale', async () => {
+    it('should fail, because we try to mint presale tokens after the initial crowdsale', async () => {
+        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 10000, {from: owner, gas: 1000000}));
+    });
+
+    it('2nd-2 should fail, because we try to trigger buyTokens in before contribution time is started', async () => {
+        await expectThrow(icoCrowdsaleInstance.buyTokens(activeInvestor1, {from: activeInvestor2, gas: 1000000}));
+    });
+
+    it('2nd-2 should fail, because we try to trigger the fallback function before contribution time is started', async () => {
+        await expectThrow(icoCrowdsaleInstance.sendTransaction({
+            from:   owner,
+            value:  web3.toWei(1, 'ether'),
+            gas:    700000
+        }));
+    });
+
+    /**
+     * [2nd Contribution period ]
+     */
+
+    it('2nd increase time to accept investments', async () => {
+        console.log('[ 2nd Contribution period ]'.yellow);
+        await increaseTimeTo(1564617600);
+    });
+
+    it('2nd should batch non-ETH investment tokens', async () => {
         const three                     = web3.toWei(3, 'ether');
         const five                      = web3.toWei(5, 'ether');
 
-        // const tx1 = await icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, three);   // investments(8)
-        // const tx2 = await icoCrowdsaleInstance.mintPresaleTokens(activeInvestor2, five);    // investments(9)
-
-        const tx1 = await icoCrowdsaleInstance.batchMintTokenPresale([activeInvestor1, activeInvestor2], [three, five]);    // investments(8) && 9
+        const tx1 = await icoCrowdsaleInstance.batchNonEthPurchase([0, 1], [activeInvestor1, activeInvestor2], [three, five]);    // investments(8) && 9
 
         const investment8 = await icoCrowdsaleInstance.investments(8);
 
@@ -1243,12 +1293,14 @@ contract('SrcCrowdsale', (accounts) => {
         const activeInvestor1Balance2 = await icoTokenInstance.balanceOf(activeInvestor1);
         const activeInvestor2Balance2 = await icoTokenInstance.balanceOf(activeInvestor2);
 
-        assert.equal(activeInvestor1Balance2.toNumber(), 2.003e+21);
-        assert.equal(activeInvestor2Balance2.toNumber(), 0);
+        assert.equal(activeInvestor1Balance2.toNumber(), 2.006e+21);
+        assert.equal(activeInvestor2Balance2.toNumber(), 5e+18);
 
         // Testing events
-        const events1 = getEvents(tx1, 'PresalePurchase');
-        // const events2 = getEvents(tx2, 'PresalePurchase');
+        const events1 = getEvents(tx1, 'NonEthTokenPurchase');
+
+        assert.equal(events1[0].investmentType.toNumber(), 0, 'activeInvestor1 investmentType !=');
+        assert.equal(events1[1].investmentType.toNumber(), 1, 'activeInvestor2 investmentType !=');
 
         assert.equal(events1[0].beneficiary, activeInvestor1, '');
         assert.equal(events1[1].beneficiary, activeInvestor2, '');
@@ -1257,30 +1309,21 @@ contract('SrcCrowdsale', (accounts) => {
         events1[1].tokenAmount.should.be.bignumber.equal(five);
     });
 
-    it('should fail batch mint tokens for presale as amount.length != beneficiary.length', async () => {
+    it('should fail batch non-ETH investments as amount.length != beneficiary.length', async () => {
         const three                     = web3.toWei(3, 'ether');
-        await expectThrow(icoCrowdsaleInstance.batchMintTokenPresale([activeInvestor1, activeInvestor2], [three]));
+        await expectThrow(icoCrowdsaleInstance.batchNonEthPurchase([0, 1], [activeInvestor1, activeInvestor2], [three]));
     });
 
-    it('2nd-2 should fail, because we try to trigger buyTokens in before contribution time is started', async () => {
-        await expectThrow(icoCrowdsaleInstance.buyTokens(activeInvestor1, {from: activeInvestor2, gas: 1000000}));
+    it('should fail batch non-ETH investments as investmentType.length != beneficiary.length', async () => {
+        const three                     = web3.toWei(3, 'ether');
+        const five                      = web3.toWei(5, 'ether');
+        await expectThrow(icoCrowdsaleInstance.batchNonEthPurchase([0], [activeInvestor1, activeInvestor2], [three, five]));
     });
 
-    it('2nd-2 should fail, because we try to trigger the fallback function before contribution time is started', async () => {
-        await expectThrow(icoCrowdsaleInstance.sendTransaction({
-            from:   owner,
-            value:  web3.toWei(1, 'ether'),
-            gas:    700000
-        }));
-    });
-
-    /**
-     * [2nd Contribution period ]
-     */
-
-    it('2nd increase time to accept investments', async () => {
-        console.log('[ 2nd Contribution period ]'.yellow);
-        await increaseTimeTo(1564617600);
+    it('should fail batch non-ETH investments as amount.length != beneficiary.length', async () => {
+        const three                     = web3.toWei(3, 'ether');
+        const five                      = web3.toWei(5, 'ether');
+        await expectThrow(icoCrowdsaleInstance.batchNonEthPurchase([0, 1], [activeInvestor1], [three, five]));
     });
 
     it('2nd should buyTokens properly', async () => {
@@ -1611,7 +1654,7 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     it('should fail, because we try to mint tokens for presale after Confirmation period is over', async () => {
-        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 1));
+        await expectThrow(icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, 1));
     });
 
     it('should fail, because we try to trigger confirmPayment after Confirmation period is over', async () => {
@@ -1788,24 +1831,15 @@ contract('SrcCrowdsale', (accounts) => {
 
         investment13[2].should.be.bignumber.equal(web3.toWei(5, 'ether'));   // Wei Amount
         investment13[3].should.be.bignumber.equal(web3.toWei(5 * newRate));                 // Token Amount
-        assert.isTrue(investment13[4]);                                     // Confirmed
+        assert.isTrue(investment13[4]);                                      // Confirmed
         assert.isFalse(investment13[5]);                                     // AttemptedSettlement
         assert.isFalse(investment13[6]);                                     // CompletedSettlement
 
-        // let tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // let tokensToMint = await icoCrowdsaleInstance.tokensToMint();
-
-        const tx = await icoCrowdsaleInstance.batchSettleInvestments([9, 10, 11, 12], {from: activeInvestor2, gas: 1000000});
-
-        // Reports back 'No events fired' - but shows 4 events, including the one below, fired...weeeeird
-        // const refundEvents = getEvents(tx, 'Refunded');
-
-        // assert.equal(refundEvents[0].to, activeInvestor2, 'wrong investor');
-        // assert.equal(refundEvents[0].value.toNumber(), web3.toWei(2, 'ether'), 'wrong amount');
+        await icoCrowdsaleInstance.batchSettleInvestments([9, 10, 11, 12], {from: activeInvestor2, gas: 1000000});
 
         const afterEthBalance = await web3.eth.getBalance(activeInvestor2);
 
-        assert.equal(afterEthBalance.sub(beforeEthBalance).toNumber(), 1999686722000000000, 'refunded amount !=');
+        assert.isAbove(afterEthBalance.toNumber(), beforeEthBalance.toNumber(), 'refunded amount !=');
 
         const investmentAfter8   = await icoCrowdsaleInstance.investments(8);
         const investmentAfter9   = await icoCrowdsaleInstance.investments(9);
@@ -1864,18 +1898,15 @@ contract('SrcCrowdsale', (accounts) => {
     // check to make sure crowdsale is closed and finalized
 
     it('2nd check balance of wallet (account[6] vs vault balance, pre-finalize)', async () => {
-        const vaultBalance = await web3.eth.getBalance(vault);
+        vaultBalancePreFinalize = await web3.eth.getBalance(vault);
         const walletBalance =  await web3.eth.getBalance(wallet);
 
-        assert.equal(vaultBalance.toNumber(), web3.toWei(13, 'ether'), 'wrong vault balance');
+        assert.equal(vaultBalancePreFinalize.toNumber(), web3.toWei(13, 'ether'), 'wrong vault balance');
         assert.equal(walletBalance.toNumber() - initialWalletBalance.toNumber(), 0, 'wrong wallet balance');
     });
 
     it('2nd should call finalize successfully', async () => {
         console.log('[ 2nd Finalize Crowdsale ]'.yellow);
-
-        // const tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // const tokensToMint = await icoCrowdsaleInstance.tokensToMint();
 
         const ownerBalance = await icoTokenInstance.balanceOf(owner);
         const activeManagerBalance = await icoTokenInstance.balanceOf(activeManager);
@@ -1914,7 +1945,7 @@ contract('SrcCrowdsale', (accounts) => {
         const walletBalance =  await web3.eth.getBalance(wallet);
 
         assert.equal(vaultBalance.toNumber(), 0, 'wrong vault balance');
-        assert.equal(walletBalance.toNumber() - initialWalletBalance.toNumber(), 12999999999998690000, 'wrong wallet balance');
+        assert.isAbove(walletBalance.toNumber(), initialWalletBalance.toNumber(), 'wrong wallet balance');
     });
 
     it('check to make sure crowdsale is closed and finalized', async () => {
@@ -1928,7 +1959,7 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     it('2nd should fail, because we try to mint tokens for presale with a non active crowdsale', async () => {
-        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 1, {from: owner, gas: 1000000}));
+        await expectThrow(icoCrowdsaleInstance.nonEthPurchase(0, activeInvestor1, 1, {from: owner, gas: 1000000}));
     });
 
     it('2nd should fail, because we try to trigger buyTokens in before contribution time is started', async () => {
@@ -1974,10 +2005,6 @@ contract('AutoRefundVault', (accounts) => {
 
     let vault;
     let vaultAddress;
-
-    let initialWalletBalance;
-
-    const oneDay = 86400;
 
     const five = web3.toWei(5, 'ether');
 
