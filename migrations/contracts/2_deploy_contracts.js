@@ -64,4 +64,5 @@ module.exports = async (deployer, network, accounts) => {
         });
 
     deployer.deploy(SrvToken);
+    deployer.deploy(WETHToken);
 };

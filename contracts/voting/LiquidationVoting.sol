@@ -78,11 +78,6 @@ contract LiquidationVoting is Ownable {
         nextStage();
     }
 
-    modifier onlyEnabled() {
-        require(votingEnabled);
-        _;
-    }
-
     modifier onlyDisabled() {
         require(!votingEnabled);
         _;

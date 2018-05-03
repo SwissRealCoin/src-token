@@ -441,3 +441,74 @@ contract('Liquidator', (accounts) => {
         assert.equal(ended, true, 'should be true');
     });
 });
+
+/**
+ * LiquidationWallet contract
+ */
+contract('LiquidationWallet', (accounts) => {
+    const owner             = accounts[0];
+    const activeInvestor1   = accounts[3];
+    const activeInvestor2   = accounts[4];
+    const wallet            = accounts[6];
+
+    let liquidationWallet;
+    let liquidationWalletAddress;
+    let payoutTokenInstance;
+    let payoutTokenAddress;
+
+    before(async () => {
+        payoutTokenInstance         = await WETHToken.deployed();
+        payoutTokenAddress          = payoutTokenInstance.address;
+
+        liquidationWallet           = await LiquidatorWallet.new(payoutTokenAddress);
+        liquidationWalletAddress    = liquidationWallet.address;
+    });
+
+    it('should allocate payout tokens to the Liquidator Wallet for withdrawals', async () => {
+        const balance = await payoutTokenInstance.balanceOf(owner);
+
+        await payoutTokenInstance.transfer(liquidationWalletAddress, balance.toNumber());
+
+        const balance2 = await payoutTokenInstance.balanceOf(liquidationWalletAddress);
+        assert.equal(balance.toNumber(), balance2.toNumber(), 'WETH balance not correct');
+    });
+
+    it('should fail, cannot send ether to fallback function', async () => {
+        await expectThrow(liquidationWallet.sendTransaction({
+            from:   owner,
+            value:  web3.toWei(5, 'ether'),
+            gas:    700000
+        }));
+    });
+
+    it('should fail, cannot deploy with 0x0 address', async () => {
+        await expectThrow(LiquidatorWallet.new(0x0));
+    });
+
+    it('should pass, authorize withdrawal for activeInvestor1', async () => {
+        await liquidationWallet.authorizePayment(activeInvestor1, 1000);
+    });
+
+    it('should pass, withdraw balance', async () => {
+        await liquidationWallet.withdrawPayments({from: activeInvestor1});
+    });
+
+    it('should fail, cannot withdrawal 0 balance', async () => {
+        await expectThrow(liquidationWallet.withdrawPayments({from: activeInvestor1}));
+    });
+
+    it('should depositRemaindingFunds, sending funds to the designated wallet', async () => {
+        // let balance = await payoutTokenInstance.balanceOf(liquidationWalletAddress);
+
+        // log.info(balance.toNumber());
+
+        await liquidationWallet.depositRemaindingFunds(wallet);
+        // balance = await payoutTokenInstance.balanceOf(liquidationWalletAddress);
+
+        // assert.equal(0, balance.toNumber(), 'vault test balance !=');
+    });
+
+    it('should fail, depositRemaindingFunds has 0 balance', async () => {
+        await expectThrow(liquidationWallet.depositRemaindingFunds(wallet));
+    });
+});

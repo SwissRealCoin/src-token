@@ -36,13 +36,6 @@ contract LiquidationWallet is Ownable {
     }
 
     /**
-    * @dev fallback function - refuse receiving ether
-    */
-    function () public payable {
-        revert();
-    }
-
-    /**
     * @dev allows onlyOwner to set new ERC20 token for payouts
     * @param _token ERC20
     */
