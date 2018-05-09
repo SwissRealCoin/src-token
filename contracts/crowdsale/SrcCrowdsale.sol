@@ -355,6 +355,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     */
     function finalize() public onlyOwner onlyConfirmationOver {
         MiniMeTokenInterface(token).enableTransfers(true);
+        // Ownable(token).transferOwnership(owner); FIXME: Breaks future crowdsales if this is done as is
         super.finalize();
     }
 

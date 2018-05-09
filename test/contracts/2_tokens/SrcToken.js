@@ -14,6 +14,7 @@ const should = require('chai') // eslint-disable-line
     .use(require('chai-bignumber')(BigNumber))
     .should();
 
+// TODO: APPROVE AND CALL
 /**
  * SrcToken contract
  */
@@ -55,6 +56,10 @@ contract('SrcToken', (accounts) => {
 
     it('should fail, because we try to transfer on a paused contract', async () => {
         await expectThrow(srcTokenInstance.transfer(tokenHolder2, 1, {from: tokenHolder1}));
+    });
+
+    it('should fail, because we try to approve on a paused contract', async () => {
+        await expectThrow(srcTokenInstance.approve(tokenHolder2, 100, {from: tokenHolder1}));
     });
 
     it('should mint 5 tokens for each token holder', async () => {
@@ -111,6 +116,31 @@ contract('SrcToken', (accounts) => {
         const paused = await srcTokenInstance.transfersEnabled();
 
         assert.isTrue(paused);
+    });
+
+    it('should pass, transfer 0 tokens - throws event', async () => {
+        const tx = await srcTokenInstance.transfer(tokenHolder2, 0, {from: tokenHolder1});
+
+        // Testing events
+        const transferEvents = getEvents(tx, 'Transfer');
+
+        assert.equal(transferEvents[0]._from, tokenHolder1, 'Transfer event from address doesn\'t match against tokenHolder1 address');
+        assert.equal(transferEvents[0]._to, tokenHolder2, 'Transfer event to address doesn\'t match against tokenHolder2 address');
+        transferEvents[0]._amount.should.be.bignumber.equal(0);
+
+        blockNum[3] = web3.eth.blockNumber;
+    });
+
+    it('should fail, transfer tokens to Token Contract', async () => {
+        await expectThrow(srcTokenInstance.transfer(srcTokenInstance.address, 1, {from: tokenHolder1}));
+    });
+
+    it('should fail, cannot sent ether to fallback', async () => {
+        await expectThrow(srcTokenInstance.sendTransaction({  // investments(3)
+            from:   tokenHolder1,
+            value:  web3.toWei(3, 'ether'),
+            gas:    1000000
+        }));
     });
 
     it('should transfer token of tokenHolder1 to tokenHolder2 using the transfer method', async () => {

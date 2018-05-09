@@ -7,14 +7,13 @@
 pragma solidity ^0.4.21;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-import 'openzeppelin-solidity/contracts/ownership/CanReclaimToken.sol';
 import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 
 contract ApproveAndCallFallBack {
     function receiveApproval(address from, uint256 _amount, address _token, bytes _data) public;
 }
 
-contract SrcToken is Ownable, CanReclaimToken {
+contract SrcToken is Ownable {
     using SafeMath for uint256;
 
     string public constant name = "SwissRealCoin";
@@ -331,12 +330,5 @@ contract SrcToken is Ownable, CanReclaimToken {
                Checkpoint storage oldCheckPoint = checkpoints[checkpoints.length-1];
                oldCheckPoint.value = uint128(_value);
            }
-    }
-
-    /// @notice The fallback function: If the contract's controller has not been
-    ///  set to 0, then the `proxyPayment` method is called which relays the
-    ///  ether and creates tokens as described in the token controller contract
-    function () public {
-        revert();
     }
 }

@@ -49,6 +49,9 @@ contract('SrcCrowdsale', (accounts) => {
 
     const ICO_TOKEN_CAP = 150e6;
 
+    const three = web3.toWei(3, 'ether');
+    const five = web3.toWei(5, 'ether');
+
     const oneDay = 86400;
     // 2nd crowdsale instance vars
     const newStartTime = 1564617600; // Thursday, August 1, 2019 12:00:00 AM
@@ -190,12 +193,28 @@ contract('SrcCrowdsale', (accounts) => {
         assert.isFalse(events4[0].active, 'inactiveManager expected to be inactive');
     });
 
+    it('should fail, because we try to set manager to address 0x0', async () => {
+        await expectThrow(icoCrowdsaleInstance.setManager(0x0, false, {from: owner, gas: 1000000}));
+    });
+
     it('should fail, because we try to set manager from unauthorized account', async () => {
         await expectThrow(icoCrowdsaleInstance.setManager(activeManager, false, {from: activeInvestor1, gas: 1000000}));
     });
 
     it('should fail, because we try to mint tokens for presale with a non owner account', async () => {
         await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 1, {from: activeManager, gas: 1000000}));
+    });
+
+    it('should fail, because we try to trigger confirmPayment before crowdsale is over', async () => {
+        await expectThrow(icoCrowdsaleInstance.confirmPayment(0, {from: owner, gas: 1000000}));
+    });
+
+    it('should fail, because we try to mint tokens for presale for a 0x0 address', async () => {
+        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(0x0, 1, {from: owner, gas: 1000000}));
+    });
+
+    it('should fail, because we try to mint tokens for presale for a 0 token amount', async () => {
+        await expectThrow(icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, 0, {from: owner, gas: 1000000}));
     });
 
     it('should fail, because we try to mint tokens more as cap limit allows', async () => {
@@ -227,17 +246,21 @@ contract('SrcCrowdsale', (accounts) => {
         }));
     });
 
+    it('should fail, because we tried to batch Mint Presale tokens with two different length arrays', async () => {
+        await expectThrow(icoCrowdsaleInstance.batchMintTokenPresale([activeInvestor1], [three, five]));
+    });
+
     it('should mint tokens for presale', async () => {
         const activeInvestor1Balance1   = await icoTokenInstance.balanceOf(activeInvestor1);
         const activeInvestor2Balance1   = await icoTokenInstance.balanceOf(activeInvestor2);
-        const three                     = web3.toWei(3, 'ether');
-        const five                      = web3.toWei(5, 'ether');
 
         activeInvestor1Balance1.should.be.bignumber.equal(new BigNumber(0));
         activeInvestor2Balance1.should.be.bignumber.equal(new BigNumber(0));
 
-        const tx1 = await icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, three);   // investments(0)
-        const tx2 = await icoCrowdsaleInstance.mintPresaleTokens(activeInvestor2, five);    // investments(1)
+        // const tx1 = await icoCrowdsaleInstance.mintPresaleTokens(activeInvestor1, three);   // investments(0)
+        // const tx2 = await icoCrowdsaleInstance.mintPresaleTokens(activeInvestor2, five);    // investments(1)
+
+        const tx1 = await icoCrowdsaleInstance.batchMintTokenPresale([activeInvestor1, activeInvestor2], [three, five]);
 
         const activeInvestor1Balance2 = await icoTokenInstance.balanceOf(activeInvestor1);
         const activeInvestor2Balance2 = await icoTokenInstance.balanceOf(activeInvestor2);
@@ -247,13 +270,12 @@ contract('SrcCrowdsale', (accounts) => {
 
         // Testing events
         const events1 = getEvents(tx1, 'PresalePurchase');
-        const events2 = getEvents(tx2, 'PresalePurchase');
 
         assert.equal(events1[0].beneficiary, activeInvestor1, '');
-        assert.equal(events2[0].beneficiary, activeInvestor2, '');
+        assert.equal(events1[1].beneficiary, activeInvestor2, '');
 
         events1[0].tokenAmount.should.be.bignumber.equal(three);
-        events2[0].tokenAmount.should.be.bignumber.equal(five);
+        events1[1].tokenAmount.should.be.bignumber.equal(five);
     });
 
     /**
@@ -275,8 +297,6 @@ contract('SrcCrowdsale', (accounts) => {
     it('should call single non-ETH investment function during crowdsale', async () => {
         const activeInvestor1Balance1   = await icoTokenInstance.balanceOf(activeInvestor1);
         const activeInvestor2Balance1   = await icoTokenInstance.balanceOf(activeInvestor2);
-        const three                     = web3.toWei(3, 'ether');
-        const five                      = web3.toWei(5, 'ether');
 
         activeInvestor1Balance1.should.be.bignumber.equal(three);
         activeInvestor2Balance1.should.be.bignumber.equal(five);
@@ -469,6 +489,10 @@ contract('SrcCrowdsale', (accounts) => {
 
     it('should fail, because we try to trigger unConfirmPayment with non manager account', async () => {
         await expectThrow(icoCrowdsaleInstance.unConfirmPayment(0, {from: inactiveManager, gas: 1000000}));
+    });
+
+    it('should fail, because we try to trigger confirmPayment before crowdsale is over', async () => {
+        await expectThrow(icoCrowdsaleInstance.confirmPayment(0, {from: owner, gas: 1000000}));
     });
 
     it('should fail, because we try to run finalizeConfirmationPeriod with a non manager account', async () => {
@@ -745,6 +769,10 @@ contract('SrcCrowdsale', (accounts) => {
 
         const confirmationPeriodOverAfter   = await icoCrowdsaleInstance.confirmationPeriodOver();
         assert.isTrue(confirmationPeriodOverAfter);
+    });
+
+    it('should fail, because we try to trigger confirmPayment after Confirmation has been set to TRUE', async () => {
+        await expectThrow(icoCrowdsaleInstance.confirmPayment(0, {from: activeManager, gas: 1000000}));
     });
 
     it('increase time to end confirmation period', async () => {
@@ -1265,9 +1293,6 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     it('2nd should batch non-ETH investment tokens', async () => {
-        const three                     = web3.toWei(3, 'ether');
-        const five                      = web3.toWei(5, 'ether');
-
         const tx1 = await icoCrowdsaleInstance.batchNonEthPurchase([0, 1], [activeInvestor1, activeInvestor2], [three, five]);    // investments(8) && 9
 
         const investment8 = await icoCrowdsaleInstance.investments(8);
@@ -1310,19 +1335,14 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     it('should fail batch non-ETH investments as amount.length != beneficiary.length', async () => {
-        const three                     = web3.toWei(3, 'ether');
         await expectThrow(icoCrowdsaleInstance.batchNonEthPurchase([0, 1], [activeInvestor1, activeInvestor2], [three]));
     });
 
     it('should fail batch non-ETH investments as investmentType.length != beneficiary.length', async () => {
-        const three                     = web3.toWei(3, 'ether');
-        const five                      = web3.toWei(5, 'ether');
         await expectThrow(icoCrowdsaleInstance.batchNonEthPurchase([0], [activeInvestor1, activeInvestor2], [three, five]));
     });
 
     it('should fail batch non-ETH investments as amount.length != beneficiary.length', async () => {
-        const three                     = web3.toWei(3, 'ether');
-        const five                      = web3.toWei(5, 'ether');
         await expectThrow(icoCrowdsaleInstance.batchNonEthPurchase([0, 1], [activeInvestor1], [three, five]));
     });
 
