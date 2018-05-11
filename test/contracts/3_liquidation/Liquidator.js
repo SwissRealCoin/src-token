@@ -50,29 +50,6 @@ contract('Liquidator', (accounts) => {
 
     const startTime = 1575158400;
 
-    const oneDay = 86400;
-    const startTimes = [1669852800, 1701388800, 1733011200]; // 2022 - 2024
-
-    const rate = 10;
-    const unclaimedRate = 5;
-
-    // const votingPeriod = duration.days(23);
-
-    // enum Stages 0 = LockOutPeriod, 1 = PendingVoting, 2 = AcceptingVotes, 3 = PendingResult, 4 = VotePassed
-
-    // Provide an instance for every test case
-    let liquidatorAddress;
-    let liquidatorInstance;
-    let liquidationVotingInstance;
-    let icoTokenAddress;
-    let icoTokenInstance;
-    let voucherTokenAddress;
-    let voucherTokenInstance;
-    let liquidationWalletAddress;
-    let liquidationWalletInstance;
-    let payoutTokenAddress;
-    let payoutTokenInstance;
-
     before(async () => {
         liquidatorInstance = await Liquidator.deployed();
         liquidationVotingInstance = await LiquidationVoting.deployed();
