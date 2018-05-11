@@ -22,7 +22,7 @@ const should = require('chai') // eslint-disable-line
 contract('SrcCrowdsale', (accounts) => {
     const owner             = accounts[0];
     const activeManager     = accounts[1];
-    const inactiveManager   = accounts[2];
+    const inactiveManager   = accounts[2]; // also acts as votingContract address
     const activeInvestor1   = accounts[3];
     const activeInvestor2   = accounts[4];
     const inactiveInvestor1 = accounts[5];
@@ -103,6 +103,20 @@ contract('SrcCrowdsale', (accounts) => {
         const newOwner = await icoTokenInstance.owner();
 
         assert.equal(newOwner, icoCrowdsaleInstance.address, 'Src Token owner not correct');
+    });
+
+    it('should setup the voting contract address', async () => {
+        await icoCrowdsaleInstance.setVotingContract(inactiveManager);
+
+        const votingAddress = await icoCrowdsaleInstance.votingContract();
+
+        assert.equal(votingAddress, inactiveManager, 'voting address !=');
+    });
+
+    it('should verify disabled = false', async () => {
+        const disabled = await icoCrowdsaleInstance.disabled();
+
+        assert.isFalse(disabled);
     });
 
     it('should not be able to mint more tokens from owner account (previous wallet deployer)', async () => {
@@ -1744,13 +1758,7 @@ contract('SrcCrowdsale', (accounts) => {
         assert.isFalse(investment13[5]);                                     // AttemptedSettlement
         assert.isFalse(investment13[6]);                                     // CompletedSettlement
 
-        // let tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // let tokensToMint = await icoCrowdsaleInstance.tokensToMint();
-
         await icoCrowdsaleInstance.settleInvestment(8, {from: inactiveInvestor1, gas: 1000000});
-
-        // tokensMinted = await icoCrowdsaleInstance.tokensMinted();
-        // tokensToMint = await icoCrowdsaleInstance.tokensToMint();
 
         const investmentAfter8   = await icoCrowdsaleInstance.investments(8);
         const investmentAfter9   = await icoCrowdsaleInstance.investments(9);
@@ -1993,6 +2001,24 @@ contract('SrcCrowdsale', (accounts) => {
 
     it('should fail, because we try to trigger a new crowdsale with a start time in the past', async () => {
         await expectThrow(icoCrowdsaleInstance.newCrowdsale(cnf.startTimeTesting, newDuration, newRate, deltaCap));
+    });
+
+    it('should fail, because we try to disable crowdsale from non voting address', async () => {
+        await expectThrow(icoCrowdsaleInstance.disableCrowdsale({from: activeInvestor1, gas: 1000000}));
+    });
+
+    it('should pass, because we try to disable crowdsale from non voting address', async () => {
+        await icoCrowdsaleInstance.disableCrowdsale({from: inactiveManager, gas: 1000000});
+    });
+
+    it('should verify disabled = false', async () => {
+        const disabled = await icoCrowdsaleInstance.disabled();
+
+        assert.isTrue(disabled);
+    });
+
+    it('should fail, because we try to trigger a new crowdsale on a disabled crowdsale', async () => {
+        await expectThrow(icoCrowdsaleInstance.newCrowdsale((1564617600 + (newDuration * 6)), newDuration, newRate, deltaCap));
     });
 });
 

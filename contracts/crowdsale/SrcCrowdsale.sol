@@ -32,6 +32,9 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
 
     uint256 public investmentIdLastAttemptedToSettle;
 
+    address public votingContract;
+    bool public disabled;
+
     // tempFix
     uint256 public lastWeiInvestorAmount;
 
@@ -57,6 +60,16 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     /*** MODIFIERS ***/
     modifier onlyManager() {
         require(isManager[msg.sender]);
+        _;
+    }
+
+    modifier onlyVotingContract() {
+        require(msg.sender == votingContract);
+        _;
+    }
+
+    modifier onlyNotDisabled() {
+        require(!disabled);
         _;
     }
 
@@ -154,7 +167,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
      * @param _rateChfPerEth uint256
      * @param _deltaTokenCap uint256
      */
-    function newCrowdsale(uint256 _start, uint256 _duration, uint256 _rateChfPerEth, uint256 _deltaTokenCap) public onlyOwner onlyConfirmationOver {
+    function newCrowdsale(uint256 _start, uint256 _duration, uint256 _rateChfPerEth, uint256 _deltaTokenCap) public onlyOwner onlyConfirmationOver onlyNotDisabled {
         require(isFinalized);
         require(_start > now);
         require(_duration > 0);
@@ -189,6 +202,14 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     function setManager(address _manager, bool _active) public onlyOwner onlyValidAddress(_manager) {
         isManager[_manager] = _active;
         emit ChangedManager(_manager, _active);
+    }
+
+    /**
+    * @dev set the voting contract address 
+    * @param votingContractAddress address
+    */
+    function setVotingContract(address votingContractAddress) public onlyOwner onlyValidAddress(votingContractAddress) {
+        votingContract = votingContractAddress;
     }
 
     /**
@@ -340,6 +361,13 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
         }
     }
 
+    /** 
+    * @dev disable crowdsale contract when voting quorum passes
+    */
+    function disableCrowdsale() public onlyVotingContract {
+        disabled = true;
+    }
+
     /**
      * @dev allows the batch settlement of investments made
      * @param _investmentIds uint256[] array of uint256 of investment ids
@@ -355,7 +383,6 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     */
     function finalize() public onlyOwner onlyConfirmationOver {
         MiniMeTokenInterface(token).enableTransfers(true);
-        // Ownable(token).transferOwnership(owner); FIXME: Breaks future crowdsales if this is done as is
         super.finalize();
     }
 
