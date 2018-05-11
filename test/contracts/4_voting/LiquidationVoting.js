@@ -132,34 +132,16 @@ contract('LiquidationVoting', (accounts) => {
 
     it('should instantiate the LiquidationVoting correctly', async () => {
         const votingPeriod = await liquidationVotingInstance.VOTING_PERIOD();
-        // const dayInSeconds = await liquidationVotingInstance.DAY_IN_SECONDS();
-        // const yearInSeconds = await liquidationVotingInstance.YEAR_IN_SECONDS();
-        // const leapYearInSeconds = await liquidationVotingInstance.LEAP_YEAR_IN_SECONDS();
-        // const orginYear = await liquidationVotingInstance.ORIGIN_YEAR();
         const token = await liquidationVotingInstance.token();
         const votingEnabled = await liquidationVotingInstance.votingEnabled();
         const notaryAddress = await liquidationVotingInstance.notary();
         const currentStage = await liquidationVotingInstance.currentStage();
 
         assert.equal(votingPeriod.toNumber(), 1987200, 'votingPeriod !=');
-        // assert.equal(dayInSeconds.toNumber(), 86400, 'dayInSeconds !=');
-        // assert.equal(yearInSeconds.toNumber(), 31536000, 'yearInSeconds address !=');
-        // assert.equal(leapYearInSeconds.toNumber(), 31622400, 'leapYearInSecondsd !=');
-        // assert.equal(orginYear.toNumber(), 1970, 'orgin year != 1970');
         assert.equal(token, icoTokenAddress, 'token !=');
         assert.equal(votingEnabled, false, 'voting not enabled');
         assert.equal(notaryAddress, notary, 'notary !=');
         assert.equal(currentStage.toNumber(), 0, 'currentStage != 0');
-    });
-
-    it('should check start times for the LiquidationVoting correctly', async () => {
-        const time0 = await liquidationVotingInstance.startTimeStamps(0);
-        const time1 = await liquidationVotingInstance.startTimeStamps(1);
-        const currentTimeStamp = await liquidationVotingInstance.currentTimeStamp();
-
-        assert.equal(currentTimeStamp, 0, 'currentTimeStamp != 0');
-        assert.equal(time0, startTimes[0], 'time0 !=');
-        assert.equal(time1, startTimes[1], 'time1 !=');
     });
 
     it('should fail, CalcProposalResult, as contract is not enabled', async () => {
@@ -168,6 +150,11 @@ contract('LiquidationVoting', (accounts) => {
 
     it('should fail, cannot vote - not a valid voting period && contract is not enabled', async () => {
         await expectThrow(liquidationVotingInstance.vote(true, {from: activeInvestor1, gas: 100000}));
+    });
+
+    it('increase time witin 180 days of voting period', async () => {
+        console.log('[ Witin 180 days of voting period ]'.yellow);
+        await increaseTimeTo(startTimes[0] - (oneDay * 180) + 1);
     });
 
     /**
@@ -248,6 +235,12 @@ contract('LiquidationVoting', (accounts) => {
     it('increase time witin 90 days of voting period', async () => {
         console.log('[ Witin 90 days of voting period ]'.yellow);
         await increaseTimeTo(startTimes[0] - (oneDay * 90) + 1);
+    });
+
+    it('should be pending voting2', async () => {
+        console.log('[ Pending Voting Period ]'.yellow);
+        const currentStage = await liquidationVotingInstance.currentStage();
+        assert.equal(currentStage.toNumber(), 1, 'currentStage != 1');
     });
 
     it('notary should be able to change quorum rate to 55%', async () => {

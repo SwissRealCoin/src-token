@@ -1,6 +1,7 @@
 {
     "tests": [
-        "test/contracts/4_voting/LiquidationVoting.js"
+        "test/contracts/4_voting/LiquidationVoting.js",
+        "test/contracts/5_endToEnd/EndToEnd.js"
     ],
     "networks": {
         "rinkeby": {

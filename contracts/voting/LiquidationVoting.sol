@@ -12,6 +12,11 @@ contract LiquidationVoting is Ownable {
     /*** Constants  ***/
     uint256 public constant VOTING_PERIOD = 23 days;
 
+    // Pulled from https://github.com/pipermerriam/ethereum-datetime/blob/master/contracts/DateTime.sol
+    uint constant YEAR_IN_SECONDS = 31536000;
+    uint constant LEAP_YEAR_IN_SECONDS = 31622400;
+    uint16 constant ORIGIN_YEAR = 1970;
+
     /*** VARIABLES ***/
     MiniMeTokenInterface public token;
     LiquidatorInterface public liquidator;
@@ -20,9 +25,8 @@ contract LiquidationVoting is Ownable {
     bool public votingEnabled;
     address public notary;
 
-    // TODO: hardcode next 100 years of start times
-    uint256[100] public startTimeStamps;
-    uint256 public currentTimeStamp;
+    // year (2022) => timestamp (1669852800)
+    mapping (uint256 => uint256) public startTimeStamps;
 
     struct Proposal {
         uint256  quorumRate;    // the minimum percentage that must participate defaults to 60?
@@ -102,9 +106,20 @@ contract LiquidationVoting is Ownable {
         votingEnabled = false;
         currentStage = Stages.LockOutPeriod;
 
-        startTimeStamps[0] = 1669852800;
-        startTimeStamps[1] = 1701388800;
-        startTimeStamps[2] = 1733011200;
+        // TODO: hardcode next 100 years of start times
+        startTimeStamps[2018] = 1543622400;
+        startTimeStamps[2019] = 1575158400;
+        startTimeStamps[2020] = 1606780800;
+        startTimeStamps[2021] = 1638316800;
+        startTimeStamps[2022] = 1669852800;
+        startTimeStamps[2023] = 1701388800;
+        startTimeStamps[2024] = 1733011200;
+        startTimeStamps[2025] = 1764547200;
+        startTimeStamps[2026] = 1796083200;
+        startTimeStamps[2027] = 1827619200;
+        startTimeStamps[2028] = 1859241600;
+        startTimeStamps[2029] = 1890777600;
+        startTimeStamps[2030] = 1922313600;
     }
 
     /**
@@ -125,7 +140,7 @@ contract LiquidationVoting is Ownable {
     */
     function enableVoting() public onlyNotary transitionNext onlyDisabled {
         votingEnabled = true;
-        createProposal();
+        createProposal(getYear(now));
     }
 
     /** 
@@ -177,7 +192,7 @@ contract LiquidationVoting is Ownable {
             quorumPasses();
         } else {
             didPass = false;
-            createProposal();   // create proposal for next year
+            createProposal(getYear(now) + 1);   // create proposal for next year - SafeMath .add() uint16 error - hence the + 1
             currentStage = Stages.PendingVoting;
         }
 
@@ -190,6 +205,60 @@ contract LiquidationVoting is Ownable {
     function currentRate() external view returns (uint256) {
         Proposal memory proposal = currentProposal();
         return proposal.quorumRate;
+    }
+
+    /** 
+    * @dev pull from https://github.com/pipermerriam/ethereum-datetime/blob/master/contracts/DateTime.sol
+    * @param timestamp uint 
+    */
+    function getYear(uint timestamp) public pure returns (uint16) {
+        uint secondsAccountedFor = 0;
+        uint16 year;
+        uint numLeapYears;
+
+        // Year
+        year = uint16(ORIGIN_YEAR + timestamp / YEAR_IN_SECONDS);
+        numLeapYears = leapYearsBefore(year) - leapYearsBefore(ORIGIN_YEAR);
+
+        secondsAccountedFor += LEAP_YEAR_IN_SECONDS * numLeapYears;
+        secondsAccountedFor += YEAR_IN_SECONDS * (year - ORIGIN_YEAR - numLeapYears);
+
+        while (secondsAccountedFor > timestamp) {
+                if (isLeapYear(uint16(year - 1))) {
+                        secondsAccountedFor -= LEAP_YEAR_IN_SECONDS;
+                }
+                else {
+                        secondsAccountedFor -= YEAR_IN_SECONDS;
+                }
+                year -= 1;
+        }
+        return year;
+    }
+
+    /** 
+    * @dev pull from https://github.com/pipermerriam/ethereum-datetime/blob/master/contracts/DateTime.sol
+    * @param year uint 
+    */
+    function leapYearsBefore(uint year) public pure returns (uint) {
+        year -= 1;
+        return year / 4 - year / 100 + year / 400;
+    }
+
+    /** 
+    * @dev pull from https://github.com/pipermerriam/ethereum-datetime/blob/master/contracts/DateTime.sol
+    * @param year uint16
+    */
+    function isLeapYear(uint16 year) public pure returns (bool) {
+        if (year % 4 != 0) {
+                return false;
+        }
+        if (year % 100 != 0) {
+                return true;
+        }
+        if (year % 400 != 0) {
+                return false;
+        }
+        return true;
     }
 
     /*** INTERNAL/PRIVATE ***/
@@ -218,10 +287,10 @@ contract LiquidationVoting is Ownable {
 
      /** 
     * @dev createProposal
+    * @param year uint256 
     */
-    function createProposal() internal {
-        uint256 time = startTimeStamps[currentTimeStamp];
-        currentTimeStamp++;
+    function createProposal(uint256 year) internal {
+        uint256 time = startTimeStamps[year];
         proposals.push(Proposal(600, time, 0, 0));  // default is 600 or 60.0%
         emit ProposalCreated(600, time);
     }

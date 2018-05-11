@@ -1126,10 +1126,7 @@ contract('SrcCrowdsale', (accounts) => {
         let transfersEnabled = await icoTokenInstance.transfersEnabled();
         assert.isFalse(transfersEnabled);
 
-        const tx = await icoCrowdsaleInstance.finalize({from: owner, gas: 1000000});
-        // log.info(JSON.stringify(tx));
-        // const events = getEvents(tx, 'Closed');
-        // vaultBalanceEvent = events[0].vaultBalance.toNumber();
+        await icoCrowdsaleInstance.finalize({from: owner, gas: 1000000});
 
         transfersEnabled = await icoTokenInstance.transfersEnabled();
         assert.isTrue(transfersEnabled);
@@ -1997,21 +1994,6 @@ contract('SrcCrowdsale', (accounts) => {
     it('should fail, because we try to trigger a new crowdsale with a start time in the past', async () => {
         await expectThrow(icoCrowdsaleInstance.newCrowdsale(cnf.startTimeTesting, newDuration, newRate, deltaCap));
     });
-
-    // // Extended Testing
-    // it('deploy new crowdsale instance for testing', async () => {
-    //     console.log('[ Establish 2nd Crowdsale Instance ]'.yellow);
-
-    //     const relativeTime = web3.eth.getBlock('latest').timestamp;
-
-    //     const secondTokenInstance = SrcToken.new();
-    //     const secondIcoInstance = SrcCrowdsale.new((relativeTime + (oneDay * 2)), (relativeTime + (oneDay * 5)), cnf.rate, cnf.wallet, secondTokenInstance.address);
-
-    //     // Transfer Ownership
-    //     await secondTokenInstance.transferOwnership(secondIcoInstance.address, {from: owner});
-    //     const newOwner = await secondTokenInstance.owner();
-    //     assert.equal(newOwner, secondIcoInstance.address, 'Src Token owner not correct');
-    // });
 });
 
 /**

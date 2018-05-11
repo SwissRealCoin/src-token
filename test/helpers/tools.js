@@ -12,8 +12,9 @@ export async function expectThrow(promise) {
         const outOfGas = error.message.search('out of gas') >= 0;
         const revert = error.message.search('revert') >= 0;
         const nonPayable = error.message.search('non-payable') >= 0;
+        const invalidNumberArgs = error.message.search('Invalid number of arguments to Solidity') >= 0;
         assert(
-            invalidOpcode || outOfGas || revert || nonPayable,
+            invalidOpcode || outOfGas || revert || nonPayable || invalidNumberArgs,
             'Expected throw, got \'' + error + '\' instead',
         );
         return;
