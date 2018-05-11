@@ -31,6 +31,7 @@ module.exports = async (deployer, network, accounts) => {
     const wallet    = accounts[6];
     const notary    = accounts[9];
 
+    let srcCrowdsaleAddress;
     let srcTokenAddress;
     let wethTokenAddress;
 
@@ -41,18 +42,21 @@ module.exports = async (deployer, network, accounts) => {
                 console.log('[ srcTokenInstance.address ]: ' + srcTokenAddress);
                 // function SrcCrowdsale(uint256 _startTime, uint256 _endTime, uint256 _rateChfPerEth, address _wallet, address _token
                 return deployer.deploy(SrcCrowdsale, startTime, endTime, rate, wallet, srcTokenAddress).then(() => {
-                    return deployer.deploy(WETHToken).then(() => {
-                        return WETHToken.deployed().then((wethTokenInstance) => {
-                            wethTokenAddress = wethTokenInstance.address;
-                            console.log('[ wethTokenInstance.address ]: ' + wethTokenAddress);
-                            // LiquidationVoting(address _notary, MiniMeTokenInterface _token)
-                            return deployer.deploy(LiquidationVoting, notary, srcTokenAddress).then(() => {
-                                return LiquidationVoting.deployed().then((liquidationVotingInstance) => {
-                                    console.log('[ liquidationVotingInstance.address ]: ' + liquidationVotingInstance.address);
-                                    // Liquidator (ERC20 _srcTokenAddress, address _swissVotingContract, ERC20 _payoutToken)
-                                    return deployer.deploy(Liquidator, srcTokenAddress, LiquidationVoting.address, wethTokenAddress).then(() => {
-                                        return Liquidator.deployed().then((liquidatorInstance) => {
-                                            console.log('[ liquidatorInstance.address ]: ' + liquidatorInstance.address);
+                    return SrcCrowdsale.deployed().then((srcCrowdsaleInstance) => {
+                        srcCrowdsaleAddress = srcCrowdsaleInstance.address;
+                        return deployer.deploy(WETHToken).then(() => {
+                            return WETHToken.deployed().then((wethTokenInstance) => {
+                                wethTokenAddress = wethTokenInstance.address;
+                                console.log('[ wethTokenInstance.address ]: ' + wethTokenAddress);
+                                // LiquidationVoting(address _notary, MiniMeTokenInterface _token)
+                                return deployer.deploy(LiquidationVoting, notary, srcTokenAddress, srcCrowdsaleAddress).then(() => {
+                                    return LiquidationVoting.deployed().then((liquidationVotingInstance) => {
+                                        console.log('[ liquidationVotingInstance.address ]: ' + liquidationVotingInstance.address);
+                                        // Liquidator (ERC20 _srcTokenAddress, address _swissVotingContract, ERC20 _payoutToken)
+                                        return deployer.deploy(Liquidator, srcTokenAddress, LiquidationVoting.address, wethTokenAddress).then(() => {
+                                            return Liquidator.deployed().then((liquidatorInstance) => {
+                                                console.log('[ liquidatorInstance.address ]: ' + liquidatorInstance.address);
+                                            });
                                         });
                                     });
                                 });

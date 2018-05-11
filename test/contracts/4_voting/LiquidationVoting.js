@@ -7,6 +7,7 @@
 import {expectThrow, waitNDays, getEvents, BigNumber, cnf, increaseTimeTo} from '../../helpers/tools';
 import {logger as log} from '../../../tools/lib/logger';
 
+const SrcCrowdsale  = artifacts.require('./SrcCrowdsale');
 const Liquidator        = artifacts.require('./Liquidator');
 const LiquidationVoting = artifacts.require('./LiquidationVoting');
 const LiquidatorWallet  = artifacts.require('./LiquidationWallet');
@@ -55,6 +56,7 @@ contract('LiquidationVoting', (accounts) => {
     let liquidationWalletInstance;
     let payoutTokenAddress;
     let payoutTokenInstance;
+    let icoCrowdsaleInstance;
 
     before(async () => {
         liquidationVotingInstance   = await LiquidationVoting.deployed();
@@ -63,6 +65,8 @@ contract('LiquidationVoting', (accounts) => {
         icoTokenAddress             = await liquidationVotingInstance.token();
         icoTokenInstance            = await SrcToken.at(icoTokenAddress);
         liquidatorAddress           = liquidatorInstance.address;
+
+        icoCrowdsaleInstance        = await SrcCrowdsale.deployed();
 
         liquidationWalletAddress    = await liquidatorInstance.liquidationWallet();
         liquidationWalletInstance   = await LiquidatorWallet.at(liquidationWalletAddress);
@@ -128,6 +132,14 @@ contract('LiquidationVoting', (accounts) => {
         const liquidator = await liquidationVotingInstance.liquidator();
 
         assert.equal(liquidator, liquidatorInstance.address, 'liquidator !=');
+    });
+
+    it('should set the Lidquidator Voting address in the ICO contract', async () => {
+        await icoCrowdsaleInstance.setVotingContract(liquidationVotingInstance.address);
+
+        const votingAddress = await icoCrowdsaleInstance.votingContract();
+
+        assert.equal(votingAddress, liquidationVotingInstance.address, 'voting address !=');
     });
 
     it('should instantiate the LiquidationVoting correctly', async () => {
@@ -437,7 +449,7 @@ contract('LiquidationVoting', (accounts) => {
     * [ Pending Results Call]
     */
 
-    it('should call calcProposalResult to get proposal outcome', async () => {
+    it('should call calcProposalResult to get proposal outcome 2', async () => {
         const tx = await liquidationVotingInstance.calcProposalResult({from: inactiveInvestor3, gas: 1000000});
 
         const events = getEvents(tx, 'LiquidationResult');

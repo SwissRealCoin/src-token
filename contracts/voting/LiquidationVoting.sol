@@ -5,6 +5,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "../liquidation/LiquidationWallet.sol";
 import "../tokens/MiniMeTokenInterface.sol";
 import "../liquidation/LiquidatorInterface.sol";
+import "../crowdsale/SrcCrowdsaleInterface.sol";
 
 contract LiquidationVoting is Ownable {
     using SafeMath for uint256;
@@ -20,6 +21,7 @@ contract LiquidationVoting is Ownable {
     /*** VARIABLES ***/
     MiniMeTokenInterface public token;
     LiquidatorInterface public liquidator;
+    SrcCrowdsaleInterface public icoContract;
 
     bool public didCalc;    // used to track if the calculate of the quorumrate as already been achieve for the current voting round
     bool public votingEnabled;
@@ -97,12 +99,14 @@ contract LiquidationVoting is Ownable {
     * @param _notary address
     * @param _token MiniMeTokenInterface
     */
-    function LiquidationVoting(address _notary, MiniMeTokenInterface _token) public onlyOwner {
-        require(address(_token) != address(0x0));
-        require(address(_notary) != address(0x0));
+    function LiquidationVoting(address _notary, MiniMeTokenInterface _token, SrcCrowdsaleInterface _icoContract) public onlyOwner {
+        require(address(_token) != address(0));
+        require(address(_notary) != address(0));
+        require(address(_icoContract) != address(0));
         
         notary = _notary;
         token = _token;
+        icoContract = _icoContract;
         votingEnabled = false;
         currentStage = Stages.LockOutPeriod;
 
@@ -300,6 +304,7 @@ contract LiquidationVoting is Ownable {
     */
     function quorumPasses() internal atStage(Stages.VotePassed) {
         liquidator.triggerLiquidation();
+        icoContract.disableCrowdsale();
         emit LiqudationTriggered();
     }
 }

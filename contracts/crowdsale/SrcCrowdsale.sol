@@ -10,8 +10,9 @@ import 'openzeppelin-solidity/contracts/token/ERC20/TokenVesting.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import '../tokens/MiniMeTokenInterface.sol';
 import './AutoRefundableCrowdsale.sol';
+import './SrcCrowdsaleInterface.sol';
 
-contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
+contract SrcCrowdsale is SrcCrowdsaleInterface, AutoRefundableCrowdsale, CappedCrowdsale {
     /*** CONSTANTS ***/
     // First Hard Cap
     uint256 public constant INITIAL_HARD_CAP = 150e6 * 1e18;    // 150 million * 1e18 - smallest unit of SRC token
@@ -364,7 +365,7 @@ contract SrcCrowdsale is AutoRefundableCrowdsale, CappedCrowdsale {
     /** 
     * @dev disable crowdsale contract when voting quorum passes
     */
-    function disableCrowdsale() public onlyVotingContract {
+    function disableCrowdsale() external onlyVotingContract {
         disabled = true;
     }
 

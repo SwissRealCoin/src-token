@@ -24,7 +24,7 @@ const should = require('chai') // eslint-disable-line
 /**
  * SrcCrowdsale contract
  */
-contract('SrcCrowdsale', (accounts) => {
+contract('End to End Test', (accounts) => {
     const owner             = accounts[0];
     const activeManager     = accounts[1];
     const inactiveManager   = accounts[2];
@@ -52,6 +52,9 @@ contract('SrcCrowdsale', (accounts) => {
     const five = web3.toWei(5, 'ether');
 
     const oneDay = 86400;
+    const newDuration = oneDay * 30; // 30 days
+    const newRate = 800; // 800 CHF per 1 ether
+    const deltaCap = 30e6 * 1e18; // 30,000,000 delta cap
 
     const icoStartTime = 1704067200; // Monday, January 1, 2024 12:00:00 AM
     const icoEndTime = 1705276800;   // Monday, January 15, 2024 12:00:00 AM
@@ -94,7 +97,7 @@ contract('SrcCrowdsale', (accounts) => {
         payoutTokenAddress      = payoutTokenInstance.address;
 
         // LiquidationVoting(address _notary, MiniMeTokenInterface _token)
-        liquidationVotingInstance   = await LiquidationVoting.new(notary, icoTokenAddress);
+        liquidationVotingInstance   = await LiquidationVoting.new(notary, icoTokenAddress, icoCrowdsaleInstance.address);
         liquidationVotingAddress    = liquidationVotingInstance.address;
 
         // Liquidator (ERC20 _srcTokenAddress, address _swissVotingContract, ERC20 _payoutToken)
@@ -140,6 +143,14 @@ contract('SrcCrowdsale', (accounts) => {
         assert.equal(vaultBalance.toNumber(), 0, 'vault balance not equal');
         assert.equal(state, 0, 'Vault state is not equal');
         assert.equal(vaultWallet, wallet, 'Vault wallet is not equal');
+    });
+
+    it('should setup the voting contract address', async () => {
+        await icoCrowdsaleInstance.setVotingContract(liquidationVotingAddress);
+
+        const votingAddress = await icoCrowdsaleInstance.votingContract();
+
+        assert.equal(votingAddress, liquidationVotingAddress, 'voting address !=');
     });
 
     it('should verify SRC token is non transferable', async () => {
@@ -1226,6 +1237,16 @@ contract('SrcCrowdsale', (accounts) => {
         await expectThrow(liquidationVotingInstance.calcProposalResult({from: inactiveInvestor1, gas: 100000}));
     });
 
+    it('should verify disabled = false', async () => {
+        const disabled = await icoCrowdsaleInstance.disabled();
+
+        assert.isTrue(disabled);
+    });
+
+    it('should fail, because we try to trigger a new crowdsale on a disabled crowdsale', async () => {
+        await expectThrow(icoCrowdsaleInstance.newCrowdsale(startTimes[2], newDuration, newRate, deltaCap));
+    });
+
     /**
     * [ Vote Passed - Trigger Liquidation ]
     */
@@ -1272,7 +1293,6 @@ contract('SrcCrowdsale', (accounts) => {
     });
 
     // Liquidation
-
     it('should allocate payout tokens to the Liquidator Wallet for withdrawals', async () => {
         let balance = await payoutTokenInstance.balanceOf(owner);
         assert.equal(balance.toNumber(), web3.toWei(100000, 'ether'), 'WETH balance not correct');

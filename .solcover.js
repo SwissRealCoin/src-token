@@ -4,5 +4,5 @@ module.exports = {
     testCommand: '../node_modules/.bin/truffle test --network coverage',
     copyPackages: ['openzeppelin-solidity'],
     norpc: false,
-    skipFiles: ['liquidation/LiquidatorInterface.sol','tokens/MiniMeTokenInterface.sol','tokens/WETHToken.sol']
+    skipFiles: ['crowdsale/SrcCrowdsaleInterface.sol','liquidation/LiquidatorInterface.sol','tokens/MiniMeTokenInterface.sol','tokens/WETHToken.sol']
 };
