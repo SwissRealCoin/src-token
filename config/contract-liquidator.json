@@ -1,8 +1,6 @@
 {
     "tests": [
-        "test/contracts/2_tokens/SrcToken.js",
-        "test/contracts/2_tokens/SrvToken.js",
-        "test/contracts/2_tokens/WETHToken.js"
+        "test/contracts/3_liquidation/Liquidator.js"
     ],
     "networks": {
         "rinkeby": {

@@ -5,9 +5,9 @@
 * 150 million total token cap
 * Duration: 21 days
 * Fixed price: 1 CHF per SRC (will be defined in ETH at deployment time of SC)
-* owner can allot tokens for presale investors manually, this still requires confirmation and settlement
-* allow token distribution to different address than sending Ether address via `buyTokens` - requires confirmation and settlement
-* owner is transferrable
+* Owner can allot tokens for presale investors manually, this still requires confirmation and settlement
+* Allow token distribution to different address than sending Ether address via `buyTokens` - requires confirmation and settlement
+* Owner is transferable
 * Future coinsales: SRC team can re-open token minting at any point in time in future again (crowdsale does not get finalized) but might set a different:
     * token price,
     * sale periode and
@@ -16,7 +16,6 @@
 
 ## SRC Token Features:
 * ERC20-compatible - MinimeToken Inspired for tracking balances over time
-* CanReclaimToken - from Open Zeppelin
 * Pausable - paused until un-paused by `finalize` in crowdsale contract calling the `enableTransfers` function of `SrcToken`
 * Real Estate Security Token - Represents shares in a Crypto-REIT
 * Name: “SwissRealCoin”

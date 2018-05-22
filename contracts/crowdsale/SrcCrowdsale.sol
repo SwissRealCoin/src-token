@@ -133,8 +133,6 @@ contract SrcCrowdsale is SrcCrowdsaleInterface, AutoRefundableCrowdsale, CappedC
         onlyValidAddress(_wallet)
     {
         setManager(msg.sender, true);
-
-        cap = INITIAL_HARD_CAP;
     }
 
     /**
